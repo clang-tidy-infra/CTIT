@@ -1,0 +1,4 @@
+build
+patch.diff
+*.log
+__pycache__

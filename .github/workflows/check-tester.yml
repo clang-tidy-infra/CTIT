@@ -1,0 +1,83 @@
+name: Integration Testing
+
+on:
+  issues:
+    types: labeled
+
+jobs:
+  build:
+    if: github.event.label.name == 'cpp' || github.event.label.name == 'c'
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    permissions:
+      issues: write
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 1
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build build-essential python3-dev zlib1g-dev python3-yaml zip unzip
+
+      - name: Set up Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C llvm-project checkout .
+          git -C llvm-project clean -fdx
+
+      - name: Parse Issue
+        run: |
+          BODY="${{ github.event.issue.body }}"
+          PR_LINK=$(echo "$BODY" | awk '{print $1}')
+          CHECK_NAME=$(echo "$BODY" | awk '{print $2}')
+
+          if [ -z "$PR_LINK" ] || [ -z "$CHECK_NAME" ]; then
+            echo "Expected format: [PR_URL] [CHECK_NAME]"
+            exit 1
+          fi
+
+          echo "PR_LINK=$PR_LINK" >> $GITHUB_ENV
+          echo "CHECK_NAME=$CHECK_NAME" >> $GITHUB_ENV
+          echo "Found PR Link: $PR_LINK"
+          echo "Found Check Name: $CHECK_NAME"
+
+      - name: Set up patch
+        run: |
+          ${{ github.workspace }}/apply_patch.sh
+        env:
+          GITHUB_PATCH_ID: ${{ env.PR_LINK }}
+
+      - name: Build Clang-tidy
+        run: ${{ github.workspace }}/build.sh
+
+      - name: Run Check on cppcheck
+        run: |
+          chmod +x testers/cppcheck.sh
+          ./testers/cppcheck.sh "${{ env.CHECK_NAME }}"
+        env:
+          CHECK_NAME: ${{ env.CHECK_NAME }}
+
+      - name: Generate Report
+        run: |
+          python3 testers/generate_report.py
+
+      - name: Artifacts
+        uses: actions/upload-artifact@v4
+        id: artifact
+        with:
+          name: ctit-logs
+          path: |
+            logs/
+            issue.md
+
+      - name: Report
+        uses: thollander/actions-comment-pull-request@v2
+        with:
+          filePath: issue.md
