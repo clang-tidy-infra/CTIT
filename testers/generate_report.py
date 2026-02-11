@@ -93,9 +93,11 @@ def generate_markdown(results):
             if not res['details'] and not res['crash']:
                 continue
 
-            f.write(f"\n<details>\n<summary><strong>🔍 {res['project']} Details ({res['warnings']} warnings, {res['errors']} errors)</strong></summary>\n\n")
+            f.write(
+                f"\n<details>\n<summary><strong>🔍 {res['project']} Details ({res['warnings']} warnings, {res['errors']} errors)</strong></summary>\n\n"
+            )
 
-            if res['crash']:
+            if res["crash"]:
                 f.write("🚨 **CRASH DETECTED** in this project!\n\n")
 
             files_dict = {}
