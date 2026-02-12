@@ -1,0 +1,40 @@
+name: Update LLVM
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  update-submodule:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: Update LLVM Submodule
+        run: |
+          git submodule update --remote llvm-project
+
+      - name: Check for changes
+        id: diff
+        run: |
+          if [[ -n $(git status -s) ]]; then
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "Changes detected in submodule."
+          else
+            echo "No changes detected."
+          fi
+
+      - name: Commit and Push
+        if: steps.diff.outputs.has_changes == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add llvm-project
+          git commit -m "chore: update llvm-project submodule to latest"
+          git push
