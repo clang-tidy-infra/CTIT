@@ -64,6 +64,13 @@ jobs:
         env:
           CHECK_NAME: ${{ env.CHECK_NAME }}
 
+      - name: Run Check on LLVM
+        run: |
+          chmod +x testers/llvm.sh
+          ./testers/llvm.sh "${{ env.CHECK_NAME }}"
+        env:
+          CHECK_NAME: ${{ env.CHECK_NAME }}
+
       - name: Generate Report
         run: |
           python3 testers/generate_report.py

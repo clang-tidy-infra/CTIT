@@ -21,6 +21,9 @@ echo "[Cppcheck] Starting integration test for check: $CHECK_NAME"
 
 mkdir -p "$LOG_DIR"
 
+echo "[Cppcheck] Removing existing .clang-tidy files..."
+find "$SOURCE_DIR" -name ".clang-tidy" -delete
+
 if [ ! -f "$CLANG_TIDY_BIN" ]; then
     echo "Error: clang-tidy binary not found at $CLANG_TIDY_BIN"
     exit 1
