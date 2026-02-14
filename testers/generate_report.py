@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import os
 import glob
 import re
@@ -13,9 +14,11 @@ PROJECT_URLS: Dict[str, str] = {
     "cppcheck": "https://github.com/danmar/cppcheck/blob/main",
 }
 
+
 @dataclass
 class Issue:
     """Represents a single static analysis issue."""
+
     file_path: str
     line: int
     col: int
@@ -24,9 +27,11 @@ class Issue:
     check_name: str
     context: Optional[str] = None
 
+
 @dataclass
 class ProjectResult:
     """Aggregated analysis results for a single project."""
+
     name: str
     warnings_count: int = 0
     errors_count: int = 0
@@ -88,10 +93,10 @@ def parse_log_file(log_path: str) -> ProjectResult:
 
     # Regex to capture standard clang-tidy output format:
     # Example: /path/to/file.cpp:10:5: warning: message [check-name]
-    issue_pattern = re.compile(r'^(.+):(\d+):(\d+): (warning|error): (.+) \[(.+)\]$')
+    issue_pattern = re.compile(r"^(.+):(\d+):(\d+): (warning|error): (.+) \[(.+)\]$")
 
     try:
-        with open(log_path, 'r', errors='replace') as f:
+        with open(log_path, "r", errors="replace") as f:
             lines = f.readlines()
 
         for i, line in enumerate(lines):
@@ -104,7 +109,9 @@ def parse_log_file(log_path: str) -> ProjectResult:
 
             match = issue_pattern.match(line)
             if match:
-                raw_path, line_num, col_num, severity, message, check_name = match.groups()
+                raw_path, line_num, col_num, severity, message, check_name = (
+                    match.groups()
+                )
 
                 # Update counts
                 if severity == "warning":
@@ -115,7 +122,7 @@ def parse_log_file(log_path: str) -> ProjectResult:
                 # Extract context code (the line following the error message)
                 context_code = None
                 if i + 1 < len(lines):
-                    next_line = lines[i+1].strip()
+                    next_line = lines[i + 1].strip()
                     # simplistic check to avoid capturing paths or noise
                     if next_line and not next_line.startswith("/"):
                         context_code = next_line
@@ -127,7 +134,7 @@ def parse_log_file(log_path: str) -> ProjectResult:
                     severity=severity,
                     message=message,
                     check_name=check_name,
-                    context=context_code
+                    context=context_code,
                 )
                 result.issues.append(issue)
 
@@ -148,9 +155,12 @@ def write_summary_table(f: TextIO, results: List[ProjectResult]) -> None:
     for res in results:
         status_display = f"{res.status_emoji} {res.status_text}"
         crash_mark = "YES" if res.has_crash else "-"
-        f.write(f"| **{res.name}** | {status_display} | {res.warnings_count} | {res.errors_count} | {crash_mark} |\n")
+        f.write(
+            f"| **{res.name}** | {status_display} | {res.warnings_count} | {res.errors_count} | {crash_mark} |\n"
+        )
 
     f.write("\n---\n")
+
 
 def write_project_details(f: TextIO, result: ProjectResult) -> None:
     """Writes the detailed breakdown of issues for a single project."""
@@ -183,12 +193,15 @@ def write_project_details(f: TextIO, result: ProjectResult) -> None:
 
             icon = "🛑" if issue.severity == "error" else "⚠️"
 
-            f.write(f"- {icon} **{loc_text}**: {issue.message} `[{issue.check_name}]`\n")
+            f.write(
+                f"- {icon} **{loc_text}**: {issue.message} `[{issue.check_name}]`\n"
+            )
 
             if issue.context:
                 f.write(f"  ```cpp\n  {issue.context}\n  ```\n")
 
     f.write("\n</details>\n")
+
 
 def generate_markdown(results: List[ProjectResult], output_path: str) -> None:
     """
@@ -199,7 +212,7 @@ def generate_markdown(results: List[ProjectResult], output_path: str) -> None:
         output_path: Destination path for the report.
     """
     try:
-        with open(output_path, 'w') as f:
+        with open(output_path, "w") as f:
             write_summary_table(f, results)
             for res in results:
                 write_project_details(f, res)
@@ -222,6 +235,7 @@ def main():
     all_results.sort(key=lambda x: x.name)
 
     generate_markdown(all_results, OUTPUT_FILE)
+
 
 if __name__ == "__main__":
     main()
