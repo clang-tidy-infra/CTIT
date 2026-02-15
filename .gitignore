@@ -2,3 +2,9 @@ build
 patch.diff
 *.log
 __pycache__
+
+# Editors
+.vscode
+.zed
+.vs
+.idea
