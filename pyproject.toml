@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools==82.0.0", "wheel==0.46.3"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ctit"
+version = "0.1.0"
+description = "Clang Tidy Integration Tester - CI service for testing clang-tidy checks against real-world C/C++ projects"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "Apache-2.0"}
+authors = [
+    {name = "Mitchell", email = "mtx@nekoarch.cc"},
+]
+keywords = [
+    "clang-tidy",
+    "llvm",
+    "static-analysis",
+    "linter",
+    "integration-testing",
+    "cpp",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Testing",
+]
+
+[project.urls]
+Homepage = "https://github.com/clang-tidy-infra/CTIT"
+Repository = "https://github.com/clang-tidy-infra/CTIT"
+Issues = "https://github.com/clang-tidy-infra/CTIT/issues"
+
+[project.optional-dependencies]
+dev = [
+    "black==26.1.0",
+    "validate-pyproject[all]==0.24",
+    "yamllint==1.37.1",
+]
+
+[tool.black]
+line-length = 88
+target-version = ["py310"]
+
+[tool.yamllint]
+config_file = ".yamllint.yaml"
