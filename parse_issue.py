@@ -2,7 +2,7 @@ import sys
 import json
 import argparse
 from dataclasses import dataclass
-from typing import Dict, Union, List, Any, Tuple, Optional
+from typing import Dict, List, Any, Optional
 
 
 @dataclass
@@ -34,7 +34,7 @@ def parse_body(body: str) -> ParseResult:
     check_name: str = parts[1]
 
     # Parse options -- simple key and value
-    check_options: Dict[str, Union[str, int, float, bool]] = {}
+    check_options: Dict[str, str] = {}
     for line in lines[1:]:
         if ":" not in line:
             continue
@@ -43,10 +43,18 @@ def parse_body(body: str) -> ParseResult:
         key: str = key_raw.strip()
         value: str = value_raw.strip()
 
-        # Auto-prefix if not already present
-        full_key: str = (
-            f"{check_name}.{key}" if not key.startswith(check_name + ".") else key
-        )
+        # Handle prefixing and warn if mismatch
+        if "." in key:
+            prefix, actual_key = key.split(".", 1)
+            if prefix != check_name:
+                print(
+                    f"Warning: Prefix mismatch. Expected '{check_name}', got '{prefix}'. "
+                    f"Overriding to '{check_name}.{actual_key}'",
+                    file=sys.stderr,
+                )
+            full_key = f"{check_name}.{actual_key}"
+        else:
+            full_key = f"{check_name}.{key}"
 
         check_options[full_key] = value
 

@@ -68,6 +68,23 @@ class TestParseIssue(unittest.TestCase):
             config["CheckOptions"],
         )
 
+    def test_mismatched_prefix(self):
+        body = """
+        https://github.com/llvm/llvm-project/pull/789 readability-identifier-naming
+        bugprone-use-after-move.VariableCase: camelBack
+        """
+        result = parse_body(body)
+        config = json.loads(result.tidy_config)
+
+        self.assertEqual(
+            config["CheckOptions"]["readability-identifier-naming.VariableCase"],
+            "camelBack",
+        )
+        self.assertNotIn(
+            "bugprone-use-after-move.VariableCase",
+            config["CheckOptions"],
+        )
+
     def test_empty_body(self):
         with self.assertRaises(ValueError):
             parse_body("")
