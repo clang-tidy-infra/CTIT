@@ -18,3 +18,9 @@ wheels/
 share/python-wheels/
 *.egg-info/
 *.egg
+
+# Editors
+.vscode
+.zed
+.vs
+.idea

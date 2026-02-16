@@ -1,0 +1,23 @@
+name: Shelllint
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  shell-lint:
+    timeout-minutes: 5
+    runs-on: ubuntu-24.04
+    name: shellcheck-lint
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Run ShellCheck
+        run: shellcheck build.sh apply_patch.sh testers/*.sh

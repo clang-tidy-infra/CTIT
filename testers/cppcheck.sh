@@ -44,7 +44,7 @@ cmake -S "$SOURCE_DIR" \
       -DBUILD_TESTS=ON
 
 echo "[Cppcheck] Running Pre-build..."
-cmake --build "$BUILD_DIR" -j $(nproc)
+cmake --build "$BUILD_DIR" -j "$(nproc)"
 echo "[Cppcheck] Running clang-tidy..."
 python3 "$RUN_TIDY_SCRIPT" \
     -clang-tidy-binary "$CLANG_TIDY_BIN" \
