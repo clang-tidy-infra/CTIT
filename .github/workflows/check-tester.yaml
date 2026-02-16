@@ -27,7 +27,7 @@ jobs:
         id: set-runner
         uses: mikehardy/runner-fallback-action@v1
         with:
-          primary-runner: "self-hosted,linux"
+          primary-runner: "self-hosted"
           fallback-runner: "ubuntu-latest"
           github-token: ${{ secrets.RUNNER_ACCESS_TOKEN }}
 
