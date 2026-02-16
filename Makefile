@@ -4,8 +4,10 @@ help:
 	@echo "Available targets:"
 	@echo ""
 	@echo "  make activate - Create venv and install dev dependencies"
+	@echo "  make test     - Run tests with coverage"
 	@echo "  make lint     - Run linters"
 	@echo "  make format   - Format code"
+  @echo "  make clean    - Clean development environment"
 
 activate:
 	@echo "Setting up development environment..."
@@ -13,6 +15,10 @@ activate:
 	venv/bin/pip install -e ".[dev]"
 	@echo "Done!"
 
+test:
+	@echo "Running tests..."
+	python3 -m unittest discover -s tests -v
+  
 format:
 	@echo "Formatting Python files..."
 	venv/bin/black --exclude '/(llvm-project|test-projects|venv)/' .
@@ -33,3 +39,8 @@ lint:
 	else \
 		echo "All linters passed."; \
 	fi
+
+clean:
+	rm -rf logs/
+	rm -rf __pycache__/ testers/__pycache__/ tests/__pycache__/
+	rm -rf *.egg-info/
