@@ -9,6 +9,9 @@ on:
       check_name:
         description: 'Clang-tidy check name'
         required: true
+      extra_config:
+        description: 'Check options (e.g. VariableCase: camelBack)'
+        required: false
   issues:
     types: labeled
 
@@ -43,23 +46,17 @@ jobs:
       - name: Parse Inputs
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            PR_LINK="${{ github.event.inputs.pr_link }}"
-            CHECK_NAME="${{ github.event.inputs.check_name }}"
+            {
+              echo "${{ github.event.inputs.pr_link }} ${{ github.event.inputs.check_name }}"
+              echo "${{ github.event.inputs.extra_config }}"
+            } | python3 parse_issue.py $GITHUB_ENV
           else
-            BODY="${{ github.event.issue.body }}"
-            PR_LINK=$(echo "$BODY" | awk '{print $1}')
-            CHECK_NAME=$(echo "$BODY" | awk '{print $2}')
+            echo "${{ github.event.issue.body }}" | python3 parse_issue.py $GITHUB_ENV
           fi
 
-          if [ -z "$PR_LINK" ] || [ -z "$CHECK_NAME" ]; then
-            echo "Expected format: [PR_URL] [CHECK_NAME]"
-            exit 1
-          fi
-
-          echo "PR_LINK=$PR_LINK" >> $GITHUB_ENV
-          echo "CHECK_NAME=$CHECK_NAME" >> $GITHUB_ENV
-          echo "Found PR Link: $PR_LINK"
-          echo "Found Check Name: $CHECK_NAME"
+          echo "PR_LINK: $PR_LINK"
+          echo "CHECK_NAME: $CHECK_NAME"
+          echo "TIDY_CONFIG: $TIDY_CONFIG"
 
       - name: Set up patch
         run: |

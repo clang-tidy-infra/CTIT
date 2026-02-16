@@ -46,11 +46,11 @@ cmake -S "$SOURCE_DIR" \
 echo "[Cppcheck] Running Pre-build..."
 cmake --build "$BUILD_DIR" -j "$(nproc)"
 echo "[Cppcheck] Running clang-tidy..."
-python3 "$RUN_TIDY_SCRIPT" \
-    -clang-tidy-binary "$CLANG_TIDY_BIN" \
-    -p "$BUILD_DIR" \
-    -checks="-*,$CHECK_NAME" \
-    -quiet \
-    > "$LOG_FILE" 2>&1 || true
+TIDY_ARGS=("-clang-tidy-binary" "$CLANG_TIDY_BIN" "-p" "$BUILD_DIR" "-checks=-*,$CHECK_NAME" "-quiet")
+if [ -n "${TIDY_CONFIG:-}" ]; then
+    TIDY_ARGS+=("-config=$TIDY_CONFIG")
+fi
+
+python3 "$RUN_TIDY_SCRIPT" "${TIDY_ARGS[@]}" > "$LOG_FILE" 2>&1 || true
 
 echo "[Cppcheck] Finished. Log saved to $LOG_FILE"

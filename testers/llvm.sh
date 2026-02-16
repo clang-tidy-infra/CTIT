@@ -57,11 +57,13 @@ echo "[LLVM] Running clang-tidy on Clang codebase..."
 TARGET_DIR="$SOURCE_DIR/clang"
 TARGET_REGEX="^$TARGET_DIR/.*(?<!\.S)$"
 
+TIDY_ARGS=("-clang-tidy-binary" "$CLANG_TIDY_BIN" "-p" "$BUILD_DIR" "-checks=-*,$CHECK_NAME" "-quiet")
+if [ -n "${TIDY_CONFIG:-}" ]; then
+    TIDY_ARGS+=("-config=$TIDY_CONFIG")
+fi
+
 python3 "$RUN_TIDY_SCRIPT" \
-    -clang-tidy-binary "$CLANG_TIDY_BIN" \
-    -p "$BUILD_DIR" \
-    -checks="-*,$CHECK_NAME" \
-    -quiet \
+    "${TIDY_ARGS[@]}" \
     "$TARGET_REGEX" \
     > "$LOG_FILE" 2>&1 || true
 
