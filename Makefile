@@ -7,7 +7,7 @@ help:
 	@echo "  make test     - Run tests with coverage"
 	@echo "  make lint     - Run linters"
 	@echo "  make format   - Format code"
-  @echo "  make clean    - Clean development environment"
+	@echo "  make clean    - Clean development environment"
 
 activate:
 	@echo "Setting up development environment..."
