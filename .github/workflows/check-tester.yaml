@@ -25,7 +25,7 @@ jobs:
     steps:
       - name: Determine runner
         id: set-runner
-        uses: mikehardy/runner-fallback-action@ae61558e5e65ace65fee39e498e039c6e34e39ad # v1.0.0
+        uses: mikehardy/runner-fallback-action@v1
         with:
           primary-runner: "self-hosted,linux"
           fallback-runner: "ubuntu-latest"
