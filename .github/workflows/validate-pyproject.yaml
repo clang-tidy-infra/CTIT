@@ -4,9 +4,15 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'pyproject.toml'
+      - '.github/workflows/validate-pyproject.yaml'
   pull_request:
     branches:
       - main
+    paths:
+      - 'pyproject.toml'
+      - '.github/workflows/validate-pyproject.yaml'
 
 permissions:
   contents: read

@@ -4,9 +4,15 @@ on:
   push:
     branches:
       - main
+    paths:
+      - '**/*.py'
+      - '.github/workflows/tests.yaml'
   pull_request:
     branches:
       - main
+    paths:
+      - '**/*.py'
+      - '.github/workflows/tests.yaml'
 
 permissions:
   contents: read
