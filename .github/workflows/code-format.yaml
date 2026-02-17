@@ -3,10 +3,16 @@ name: Code formatter
 on:
   push:
     branches:
-    - main
+      - main
+    paths:
+      - '**/*.py'
+      - '.github/workflows/code-format.yaml'
   pull_request:
     branches:
       - main
+    paths:
+      - '**/*.py'
+      - '.github/workflows/code-format.yaml'
 
 permissions:
   contents: read

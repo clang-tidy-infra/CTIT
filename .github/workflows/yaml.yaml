@@ -4,9 +4,15 @@ on:
   push:
     branches:
       - main
+    paths:
+      - '**/*.yaml'
+      - '**/*.yml'
   pull_request:
     branches:
       - main
+    paths:
+      - '**/*.yaml'
+      - '**/*.yml'
 
 permissions:
   contents: read
