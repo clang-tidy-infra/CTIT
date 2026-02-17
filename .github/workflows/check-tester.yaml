@@ -56,25 +56,20 @@ jobs:
           echo "TIDY_CONFIG: $TIDY_CONFIG"
 
       - name: Set up patch
-        run: |
-          ${{ github.workspace }}/apply_patch.sh
+        run: bash apply_patch.sh
         env:
           GITHUB_PATCH_ID: ${{ env.PR_LINK }}
 
       - name: Build Clang-tidy
-        run: ${{ github.workspace }}/build.sh
+        run: bash build.sh
 
       - name: Run Check on cppcheck
-        run: |
-          chmod +x testers/cppcheck.sh
-          ./testers/cppcheck.sh "${{ env.CHECK_NAME }}"
+        run: bash testers/cppcheck.sh "${{ env.CHECK_NAME }}"
         env:
           CHECK_NAME: ${{ env.CHECK_NAME }}
 
       - name: Run Check on LLVM
-        run: |
-          chmod +x testers/llvm.sh
-          ./testers/llvm.sh "${{ env.CHECK_NAME }}"
+        run: bash testers/llvm.sh "${{ env.CHECK_NAME }}"
         env:
           CHECK_NAME: ${{ env.CHECK_NAME }}
 
