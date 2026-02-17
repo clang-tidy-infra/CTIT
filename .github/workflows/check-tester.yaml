@@ -19,7 +19,7 @@ jobs:
   build:
     if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'cpp' || github.event.label.name == 'c'
     runs-on: ubuntu-latest
-    container: ghcr.io/clang-tidy-infra/ctit-runner:latest
+    container: ghcr.io/clang-tidy-infra/ctit-runner:sha-a7e57e9
     timeout-minutes: 360
 
     permissions:
