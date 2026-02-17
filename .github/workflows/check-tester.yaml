@@ -25,6 +25,7 @@ jobs:
     permissions:
       issues: write
       contents: write
+      packages: read
 
     steps:
       - uses: actions/checkout@v4
