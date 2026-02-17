@@ -34,7 +34,9 @@ jobs:
   build:
     needs: determine-runner
     runs-on: ${{ fromJson(needs.determine-runner.outputs.runner) }}
-    container: ghcr.io/clang-tidy-infra/ctit-runner:sha-a7e57e9
+    container: 
+      image: ghcr.io/clang-tidy-infra/ctit-runner:sha-a7e57e9
+      options: --user root
     timeout-minutes: 360
 
     permissions:
@@ -43,6 +45,9 @@ jobs:
       packages: read
 
     steps:
+      - name: Debug Permissions
+        run: ls -la /__w/_temp/
+
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           submodules: true
