@@ -1,0 +1,5 @@
+rules:
+  template-injection:
+    ignore:
+      - check-tester.yaml
+      - build-ctit-container.yaml

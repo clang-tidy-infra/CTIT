@@ -48,6 +48,7 @@ dev = [
     "yamllint==1.37.1",
     "ruff==0.11.0",
     "mypy==1.15.0",
+    "zizmor==1.6.0",
 ]
 
 [tool.black]

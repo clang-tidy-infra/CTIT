@@ -31,6 +31,7 @@ lint:
 	output=$$(venv/bin/validate-pyproject pyproject.toml 2>&1) || { echo "$$output"; failed="$$failed validate-pyproject"; }; \
 	output=$$(FORCE_COLOR=1 venv/bin/ruff check . 2>&1) || { echo "$$output"; failed="$$failed ruff"; }; \
 	output=$$(venv/bin/mypy --color-output . 2>&1) || { echo "$$output"; failed="$$failed mypy"; }; \
+	output=$$(venv/bin/zizmor --color=always --no-online-audits --config .zizmor.yml .github/workflows/ 2>&1) || { echo "$$output"; failed="$$failed zizmor"; }; \
 	if [ -n "$$failed" ]; then \
 		msg="FAILED LINTERS:$$failed"; \
 		line=$$(printf '%*s' $${#msg} '' | tr ' ' '-'); \

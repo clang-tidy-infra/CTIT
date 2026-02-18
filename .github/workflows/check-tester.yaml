@@ -15,6 +15,8 @@ on:
   issues:
     types: labeled
 
+permissions: {}
+
 jobs:
   determine-runner:
     if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'cpp' || github.event.label.name == 'c'
@@ -25,7 +27,7 @@ jobs:
     steps:
       - name: Determine runner
         id: set-runner
-        uses: mikehardy/runner-fallback-action@v1
+        uses: mikehardy/runner-fallback-action@dc7732f9e532c451b2527b288ba8d58fd4b0a4ca # v1.1.0
         with:
           primary-runner: "self-hosted"
           fallback-runner: "ubuntu-latest"
@@ -45,10 +47,11 @@ jobs:
       packages: read
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           submodules: true
           fetch-depth: 1
+          persist-credentials: false
 
       - name: Set up Git
         run: |
@@ -96,7 +99,7 @@ jobs:
           python3 testers/generate_report.py
 
       - name: Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         id: artifact
         with:
           name: ctit-logs
@@ -106,6 +109,6 @@ jobs:
 
       - name: Report
         if: github.event_name != 'workflow_dispatch'
-        uses: thollander/actions-comment-pull-request@v2
+        uses: thollander/actions-comment-pull-request@fabd468d3a1a0b97feee5f6b9e499eab0dd903f6 # v2.5.0
         with:
           filePath: issue.md

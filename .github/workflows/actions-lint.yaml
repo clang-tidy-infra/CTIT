@@ -1,31 +1,32 @@
-name: Shell lint
+name: Github Actions lint
 
 on:
   push:
     branches:
       - main
     paths:
-      - '**/*.sh'
-      - '.github/workflows/shellcheck.yaml'
+      - '.github/workflows/**'
   pull_request:
     branches:
       - main
     paths:
-      - '**/*.sh'
-      - '.github/workflows/shellcheck.yaml'
+      - '.github/workflows/**'
 
 permissions:
   contents: read
 
 jobs:
-  shell-lint:
+  actions-lint:
     timeout-minutes: 5
     runs-on: ubuntu-24.04
-    name: shellcheck-lint
+    name: actions-lint
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
 
-      - name: Run ShellCheck
-        run: shellcheck build.sh apply_patch.sh testers/*.sh
+      - name: Run zizmor
+        uses: zizmorcore/zizmor-action@0dce2577a4760a2749d8cfb7a84b7d5585ebcb7d # v0.5.0
+        with:
+          advanced-security: false
+          config: .zizmor.yml
