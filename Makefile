@@ -1,4 +1,4 @@
-.PHONY: help activate test lint format clean
+.PHONY: help activate test lint format clean build-container test-container
 
 help:
 	@echo "Available targets:"
@@ -8,6 +8,8 @@ help:
 	@echo "  make lint     - Run linters"
 	@echo "  make format   - Format code"
 	@echo "  make clean    - Clean development environment"
+	@echo "  make build-container - Build the CTIT runner Docker image"
+	@echo "  make test-container  - Test the CTIT runner Docker image"
 
 activate:
 	@echo "Setting up development environment..."
@@ -27,7 +29,7 @@ lint:
 	@failed=""; \
 	output=$$(venv/bin/black --check --color --exclude '/(llvm-project|test-projects|venv)/' . 2>&1) || { echo "$$output"; failed="$$failed black"; }; \
 	output=$$(venv/bin/yamllint -f colored -c .yamllint.yaml .github/ 2>&1) || { echo "$$output"; failed="$$failed yamllint"; }; \
-	output=$$(venv/bin/shellcheck --wiki-link-count=0 --color=always build.sh apply_patch.sh testers/*.sh 2>&1) || { echo "$$output"; failed="$$failed shellcheck"; }; \
+	output=$$(venv/bin/shellcheck --wiki-link-count=0 --color=always build.sh apply_patch.sh testers/*.sh tests/*.sh 2>&1) || { echo "$$output"; failed="$$failed shellcheck"; }; \
 	output=$$(venv/bin/validate-pyproject pyproject.toml 2>&1) || { echo "$$output"; failed="$$failed validate-pyproject"; }; \
 	output=$$(FORCE_COLOR=1 venv/bin/ruff check . 2>&1) || { echo "$$output"; failed="$$failed ruff"; }; \
 	output=$$(venv/bin/mypy --color-output . 2>&1) || { echo "$$output"; failed="$$failed mypy"; }; \
@@ -42,6 +44,15 @@ lint:
 	else \
 		echo "All linters passed."; \
 	fi
+
+CONTAINER_IMAGE = ctit-runner
+
+build-container:
+	@echo "Building CTIT runner container..."
+	docker build -t $(CONTAINER_IMAGE) .github/workflows/containers/ctit-runner/
+
+test-container: build-container
+	bash tests/test_container.sh $(CONTAINER_IMAGE)
 
 clean:
 	rm -rf logs/

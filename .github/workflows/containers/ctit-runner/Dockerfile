@@ -7,6 +7,7 @@ RUN apt-get update && \
     cmake \
     ninja-build \
     build-essential \
+    mold \
     python3 \
     python3-dev \
     python3-yaml \
@@ -15,9 +16,20 @@ RUN apt-get update && \
     unzip \
     wget \
     git \
-    ca-certificates && \
+    ca-certificates \
+    lsb-release \
+    gnupg \
+    software-properties-common && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+
+RUN wget -qO- https://apt.llvm.org/llvm.sh | bash -s -- 21 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+ENV CC=clang-21
+ENV CXX=clang++-21
+ENV LLVM_USE_LINKER=mold
 
 # Create a new user with id 1001 as that is the user id that
 # Github Actions uses to perform the checkout action.
