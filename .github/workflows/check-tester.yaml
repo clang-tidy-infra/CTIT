@@ -51,6 +51,7 @@ jobs:
           fetch-depth: 1
 
       - name: Set up Git
+        run: |
           git config --global --add safe.directory '*'
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
