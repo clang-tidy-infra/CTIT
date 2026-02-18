@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-import os
 import glob
+import os
 import re
 import sys
 from dataclasses import dataclass, field
-from typing import List, Dict, Optional, TextIO
+from typing import TextIO
 
 LOG_DIR = "logs"
 OUTPUT_FILE = "issue.md"
 
 # TODO: In the future, dynamically determine the commit hash for accurate linking.
-PROJECT_URLS: Dict[str, str] = {
+PROJECT_URLS: dict[str, str] = {
     "cppcheck": "https://github.com/danmar/cppcheck/blob/main",
 }
 
@@ -25,7 +25,7 @@ class Issue:
     severity: str
     message: str
     check_name: str
-    context: Optional[str] = None
+    context: str | None = None
 
 
 @dataclass
@@ -36,7 +36,7 @@ class ProjectResult:
     warnings_count: int = 0
     errors_count: int = 0
     has_crash: bool = False
-    issues: List[Issue] = field(default_factory=list)
+    issues: list[Issue] = field(default_factory=list)
 
     @property
     def status_emoji(self) -> str:
@@ -96,7 +96,7 @@ def parse_log_file(log_path: str) -> ProjectResult:
     issue_pattern = re.compile(r"^(.+):(\d+):(\d+): (warning|error): (.+) \[(.+)\]$")
 
     try:
-        with open(log_path, "r", errors="replace") as f:
+        with open(log_path, errors="replace") as f:
             lines = f.readlines()
 
         for i, line in enumerate(lines):
@@ -138,7 +138,7 @@ def parse_log_file(log_path: str) -> ProjectResult:
                 )
                 result.issues.append(issue)
 
-    except IOError as e:
+    except OSError as e:
         print(f"Error reading {log_path}: {e}", file=sys.stderr)
     except Exception as e:
         print(f"Unexpected error parsing {log_path}: {e}", file=sys.stderr)
@@ -146,7 +146,7 @@ def parse_log_file(log_path: str) -> ProjectResult:
     return result
 
 
-def write_summary_table(f: TextIO, results: List[ProjectResult]) -> None:
+def write_summary_table(f: TextIO, results: list[ProjectResult]) -> None:
     """Writes the high-level summary table to the markdown file."""
     f.write("### 🧪 Clang-Tidy Integration Test Results\n\n")
     f.write("| Project | Status | Warnings | Errors | Crash |\n")
@@ -156,7 +156,9 @@ def write_summary_table(f: TextIO, results: List[ProjectResult]) -> None:
         status_display = f"{res.status_emoji} {res.status_text}"
         crash_mark = "YES" if res.has_crash else "-"
         f.write(
-            f"| **{res.name}** | {status_display} | {res.warnings_count} | {res.errors_count} | {crash_mark} |\n"
+            f"| **{res.name}** | {status_display} "
+            f"| {res.warnings_count} | {res.errors_count} "
+            f"| {crash_mark} |\n"
         )
 
     f.write("\n---\n")
@@ -174,7 +176,7 @@ def write_project_details(f: TextIO, result: ProjectResult) -> None:
         f.write("🚨 **CRASH DETECTED** in this project!\n\n")
 
     # Group issues by file
-    files_dict: Dict[str, List[Issue]] = {}
+    files_dict: dict[str, list[Issue]] = {}
     for issue in result.issues:
         files_dict.setdefault(issue.file_path, []).append(issue)
 
@@ -203,7 +205,7 @@ def write_project_details(f: TextIO, result: ProjectResult) -> None:
     f.write("\n</details>\n")
 
 
-def generate_markdown(results: List[ProjectResult], output_path: str) -> None:
+def generate_markdown(results: list[ProjectResult], output_path: str) -> None:
     """
     Orchestrates the creation of the markdown report.
 
@@ -217,7 +219,7 @@ def generate_markdown(results: List[ProjectResult], output_path: str) -> None:
             for res in results:
                 write_project_details(f, res)
         print(f"Report generated: {output_path}")
-    except IOError as e:
+    except OSError as e:
         print(f"Error writing report to {output_path}: {e}", file=sys.stderr)
 
 

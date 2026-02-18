@@ -6,11 +6,11 @@ import unittest
 from testers.generate_report import (
     Issue,
     ProjectResult,
+    generate_markdown,
     get_relative_path,
     parse_log_file,
-    write_summary_table,
     write_project_details,
-    generate_markdown,
+    write_summary_table,
 )
 
 

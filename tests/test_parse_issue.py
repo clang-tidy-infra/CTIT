@@ -1,5 +1,6 @@
-import unittest
 import json
+import unittest
+
 from parse_issue import parse_body
 
 

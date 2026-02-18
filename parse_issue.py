@@ -1,8 +1,8 @@
-import sys
-import json
 import argparse
+import json
+import sys
 from dataclasses import dataclass
-from typing import Dict, List, Any, Optional
+from typing import Any
 
 
 @dataclass
@@ -20,13 +20,13 @@ def parse_body(body: str) -> ParseResult:
     if not body:
         raise ValueError("Empty body")
 
-    lines: List[str] = [line.strip() for line in body.splitlines() if line.strip()]
+    lines: list[str] = [line.strip() for line in body.splitlines() if line.strip()]
     if not lines:
         raise ValueError("No valid lines found")
 
     # Parse [PR_URL] [CHECK_NAME]
     first_line: str = lines[0]
-    parts: List[str] = first_line.split()
+    parts: list[str] = first_line.split()
     if len(parts) < 2:
         raise ValueError("First line must contain PR_URL and CHECK_NAME")
 
@@ -34,7 +34,7 @@ def parse_body(body: str) -> ParseResult:
     check_name: str = parts[1]
 
     # Parse options -- simple key and value
-    check_options: Dict[str, str] = {}
+    check_options: dict[str, str] = {}
     for line in lines[1:]:
         if ":" not in line:
             continue
@@ -61,7 +61,7 @@ def parse_body(body: str) -> ParseResult:
     # Format as clang-tidy config string
     tidy_config: str = ""
     if check_options:
-        config_dict: Dict[str, Any] = {"CheckOptions": check_options}
+        config_dict: dict[str, Any] = {"CheckOptions": check_options}
         tidy_config = json.dumps(config_dict)
 
     return ParseResult(pr_link=pr_link, check_name=check_name, tidy_config=tidy_config)
