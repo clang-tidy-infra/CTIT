@@ -1,0 +1,46 @@
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore:"
+    groups:
+      dev-dependencies:
+        patterns:
+          - "*" # Groups all updates into single PR per ecosystem
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore:"
+    groups:
+      actions:
+        patterns:
+          - "*" # Groups all updates into single PR per ecosystem
+
+  - package-ecosystem: "docker"
+    directory: ".github/workflows/containers/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore:"
+    groups:
+      actions:
+        patterns:
+          - "*" # Groups all updates into single PR per ecosystem

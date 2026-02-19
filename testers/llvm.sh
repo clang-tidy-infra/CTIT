@@ -65,6 +65,6 @@ fi
 python3 "$RUN_TIDY_SCRIPT" \
     "${TIDY_ARGS[@]}" \
     "$TARGET_REGEX" \
-    > "$LOG_FILE" 2>&1 || true
+    2>&1 | tee "$LOG_FILE" || true
 
 echo "[LLVM] Finished. Log saved to $LOG_FILE"
