@@ -51,6 +51,6 @@ if [ -n "${TIDY_CONFIG:-}" ]; then
     TIDY_ARGS+=("-config=$TIDY_CONFIG")
 fi
 
-python3 "$RUN_TIDY_SCRIPT" "${TIDY_ARGS[@]}" > "$LOG_FILE" 2>&1 || true
+python3 "$RUN_TIDY_SCRIPT" "${TIDY_ARGS[@]}" 2>&1 | tee "$LOG_FILE" || true
 
 echo "[Cppcheck] Finished. Log saved to $LOG_FILE"
