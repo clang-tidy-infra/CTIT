@@ -63,12 +63,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Test image
-        run: |
-          IMAGE="${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}"
-          docker run --rm "$IMAGE" cmake --version
-          docker run --rm "$IMAGE" ninja --version
-          docker run --rm "$IMAGE" python3 -c "import yaml; print('yaml OK')"
-          docker run --rm "$IMAGE" git --version
+        run: bash tests/test_container.sh "${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}"
 
       - name: Push image
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'

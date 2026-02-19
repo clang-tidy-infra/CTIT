@@ -10,6 +10,11 @@ echo "Starting build process"
 
 mkdir -p "$BUILD_DIR"
 
+CMAKE_EXTRA_ARGS=()
+if [ -n "${LLVM_USE_LINKER:-}" ]; then
+    CMAKE_EXTRA_ARGS+=("-DLLVM_USE_LINKER=$LLVM_USE_LINKER")
+fi
+
 echo "Configuring CMake"
 cmake -G Ninja \
     -S "$SOURCE_DIR" \
@@ -21,7 +26,9 @@ cmake -G Ninja \
     -DLLVM_TARGETS_TO_BUILD="X86" \
     -DLLVM_INCLUDE_BENCHMARKS=OFF \
     -DLLVM_INCLUDE_EXAMPLES=OFF \
-    -DLLVM_INCLUDE_TESTS=OFF
+    -DLLVM_INCLUDE_TESTS=OFF \
+    -DCLANG_TIDY_ENABLE_STATIC_ANALYZER=OFF \
+    "${CMAKE_EXTRA_ARGS[@]}"
 
 echo "Building clang-tidy"
 ninja -C "$BUILD_DIR" clang-tidy
