@@ -99,7 +99,7 @@ jobs:
           python3 testers/generate_report.py
 
       - name: Artifacts
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         id: artifact
         with:
           name: ctit-logs
@@ -109,6 +109,6 @@ jobs:
 
       - name: Report
         if: github.event_name != 'workflow_dispatch'
-        uses: thollander/actions-comment-pull-request@fabd468d3a1a0b97feee5f6b9e499eab0dd903f6 # v2.5.0
+        uses: thollander/actions-comment-pull-request@24bffb9b452ba05a4f3f77933840a6a841d1b32b # v3.0.1
         with:
           filePath: issue.md
