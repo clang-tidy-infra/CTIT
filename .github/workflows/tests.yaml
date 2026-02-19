@@ -6,13 +6,13 @@ on:
       - main
     paths:
       - '**/*.py'
-      - '.github/workflows/tests.yaml'
+      - '.github/workflows/*.yaml'
   pull_request:
     branches:
       - main
     paths:
       - '**/*.py'
-      - '.github/workflows/tests.yaml'
+      - '.github/workflows/*.yaml'
 
 permissions:
   contents: read

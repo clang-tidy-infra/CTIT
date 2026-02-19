@@ -7,14 +7,14 @@ on:
     paths:
       - '**/*.py'
       - 'pyproject.toml'
-      - '.github/workflows/code-lint.yaml'
+      - '.github/workflows/*.yaml'
   pull_request:
     branches:
       - main
     paths:
       - '**/*.py'
       - 'pyproject.toml'
-      - '.github/workflows/code-lint.yaml'
+      - '.github/workflows/*.yaml'
 
 permissions:
   contents: read
