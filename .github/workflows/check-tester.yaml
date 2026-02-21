@@ -37,7 +37,7 @@ jobs:
     needs: determine-runner
     runs-on: ${{ fromJson(needs.determine-runner.outputs.runner) }}
     container: 
-      image: ghcr.io/clang-tidy-infra/ctit-runner:sha-a04f8ef
+      image: ghcr.io/clang-tidy-infra/ctit-runner:sha-1f6af17
       options: --user root
     timeout-minutes: 360
 
