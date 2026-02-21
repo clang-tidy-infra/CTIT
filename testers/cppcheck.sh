@@ -36,13 +36,22 @@ fi
 
 echo "[Cppcheck] Configuring CMake..."
 mkdir -p "$BUILD_DIR"
+
+CMAKE_EXTRA_ARGS=()
+if command -v sccache >/dev/null 2>&1; then
+    echo "Using sccache"
+    CMAKE_EXTRA_ARGS+=("-DCMAKE_C_COMPILER_LAUNCHER=sccache")
+    CMAKE_EXTRA_ARGS+=("-DCMAKE_CXX_COMPILER_LAUNCHER=sccache")
+fi
+
 cmake -S "$SOURCE_DIR" \
       -B "$BUILD_DIR" \
       -G "Ninja" \
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
       -DCMAKE_BUILD_TYPE=Release \
       -DBUILD_TESTS=ON \
-      -DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON
+      -DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON \
+      "${CMAKE_EXTRA_ARGS[@]}"
 
 echo "[Cppcheck] Running Pre-build..."
 cmake --build "$BUILD_DIR" -j "$(nproc)"

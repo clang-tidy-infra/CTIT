@@ -16,6 +16,17 @@ if [ -n "${LLVM_USE_LINKER:-}" ]; then
 fi
 
 echo "Configuring CMake"
+CMAKE_EXTRA_ARGS=()
+if [ -n "${LLVM_USE_LINKER:-}" ]; then
+    CMAKE_EXTRA_ARGS+=("-DLLVM_USE_LINKER=$LLVM_USE_LINKER")
+fi
+
+if command -v sccache >/dev/null 2>&1; then
+    echo "Using sccache"
+    CMAKE_EXTRA_ARGS+=("-DCMAKE_C_COMPILER_LAUNCHER=sccache")
+    CMAKE_EXTRA_ARGS+=("-DCMAKE_CXX_COMPILER_LAUNCHER=sccache")
+fi
+
 cmake -G Ninja \
     -S "$SOURCE_DIR" \
     -B "$BUILD_DIR" \
