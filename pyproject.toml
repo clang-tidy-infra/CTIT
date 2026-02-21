@@ -35,6 +35,9 @@ classifiers = [
     "Topic :: Software Development :: Testing",
 ]
 
+[project.scripts]
+ctit = "ctit:main"
+
 [project.urls]
 Homepage = "https://github.com/clang-tidy-infra/CTIT"
 Repository = "https://github.com/clang-tidy-infra/CTIT"
@@ -50,6 +53,10 @@ dev = [
     "mypy==1.19.1",
     "zizmor==1.22.0",
 ]
+
+[tool.setuptools]
+py-modules = ["ctit"]
+packages = ["testers"]
 
 [tool.black]
 line-length = 88

@@ -62,7 +62,7 @@ jobs:
           git -C llvm-project clean -fdx
 
       - name: Clone test projects
-        run: python3 -m testers.clone_projects --work-dir test_projects
+        run: ./ctit.py clone --work-dir test_projects
 
       - name: Parse Inputs
         run: |
@@ -99,7 +99,7 @@ jobs:
 
       - name: Generate Report
         run: |
-          python3 -m testers.generate_report
+          ./ctit.py report
 
       - name: Artifacts
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0

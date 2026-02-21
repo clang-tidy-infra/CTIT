@@ -8,8 +8,8 @@ from typing import TextIO
 
 from testers.config import load_projects
 
-LOG_DIR = "logs"
-OUTPUT_FILE = "issue.md"
+DEFAULT_LOG_DIR = "logs"
+DEFAULT_OUTPUT_FILE = "issue.md"
 
 
 @dataclass
@@ -235,14 +235,14 @@ def generate_markdown(
         print(f"Error writing report to {output_path}: {e}", file=sys.stderr)
 
 
-def main():
-    if not os.path.exists(LOG_DIR):
-        print(f"Log directory '{LOG_DIR}' not found.", file=sys.stderr)
+def generate_report(log_dir: str, output: str) -> None:
+    if not os.path.exists(log_dir):
+        print(f"Log directory '{log_dir}' not found.", file=sys.stderr)
         sys.exit(1)
 
-    log_files = glob.glob(os.path.join(LOG_DIR, "*.log"))
+    log_files = glob.glob(os.path.join(log_dir, "*.log"))
     if not log_files:
-        print(f"No log files found in '{LOG_DIR}'.", file=sys.stderr)
+        print(f"No log files found in '{log_dir}'.", file=sys.stderr)
         sys.exit(0)
 
     try:
@@ -254,8 +254,4 @@ def main():
     all_results = [parse_log_file(log) for log in log_files]
     all_results.sort(key=lambda x: x.name)
 
-    generate_markdown(all_results, OUTPUT_FILE, project_urls)
-
-
-if __name__ == "__main__":
-    main()
+    generate_markdown(all_results, output, project_urls)

@@ -2,11 +2,13 @@ import io
 import os
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from testers.generate_report import (
     Issue,
     ProjectResult,
     generate_markdown,
+    generate_report,
     get_relative_path,
     parse_log_file,
     write_project_details,
@@ -352,6 +354,49 @@ class TestGenerateMarkdown(unittest.TestCase):
             self.assertIn("CRASH", content)
             self.assertIn("check-a", content)
             self.assertIn("check-b", content)
+
+
+class TestGenerateReport(unittest.TestCase):
+    def test_exits_when_log_dir_missing(self):
+        with self.assertRaises(SystemExit) as ctx:
+            generate_report("/nonexistent/logs", "out.md")
+        self.assertEqual(ctx.exception.code, 1)
+
+    def test_exits_when_no_log_files(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            with self.assertRaises(SystemExit) as ctx:
+                generate_report(tmp_dir, "out.md")
+            self.assertEqual(ctx.exception.code, 0)
+
+    @patch("testers.generate_report.load_projects", side_effect=OSError)
+    def test_generates_report_without_config(self, mock_load):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            log_path = os.path.join(tmp_dir, "proj.log")
+            with open(log_path, "w") as f:
+                f.write("/path/file.cpp:1:1: warning: msg [check]\n")
+
+            output_path = os.path.join(tmp_dir, "report.md")
+            generate_report(tmp_dir, output_path)
+
+            self.assertTrue(os.path.exists(output_path))
+            with open(output_path) as f:
+                content = f.read()
+            self.assertIn("Clang-Tidy Integration Test Results", content)
+            self.assertIn("check", content)
+
+    def test_generates_report_end_to_end(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            log_path = os.path.join(tmp_dir, "proj.log")
+            with open(log_path, "w") as f:
+                f.write("/path/proj/src/a.cpp:10:5: warning: bad [check-a]\n")
+
+            output_path = os.path.join(tmp_dir, "report.md")
+            generate_report(tmp_dir, output_path)
+
+            with open(output_path) as f:
+                content = f.read()
+            self.assertIn("| **proj** |", content)
+            self.assertIn("check-a", content)
 
 
 if __name__ == "__main__":
