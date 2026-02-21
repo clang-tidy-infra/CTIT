@@ -2,6 +2,8 @@ build
 patch.diff
 *.log
 __pycache__
+_work/
+test_projects/
 
 # Distribution/packaging
 develop-eggs/

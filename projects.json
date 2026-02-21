@@ -1,0 +1,8 @@
+{
+  "projects": {
+    "cppcheck": {
+      "url": "https://github.com/danmar/cppcheck.git",
+      "commit": "1e79f7ffa1de4b9dc34cd96080f7d78c925d19b0"
+    }
+  }
+}
