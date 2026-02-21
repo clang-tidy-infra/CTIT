@@ -12,6 +12,7 @@ RUN apt-get update && \
     python3-dev \
     python3-yaml \
     zlib1g-dev \
+    sccache \
     zip \
     unzip \
     wget \

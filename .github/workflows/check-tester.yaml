@@ -46,6 +46,9 @@ jobs:
       contents: write
       packages: read
 
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -80,6 +83,9 @@ jobs:
         run: bash apply_patch.sh
         env:
           GITHUB_PATCH_ID: ${{ env.PR_LINK }}
+
+      - name: sccache
+        uses: mozilla-actions/sccache-action@d651010b8da762cde178750d8eda7b5febfe147a # v0.0.9
 
       - name: Build Clang-tidy
         run: bash build.sh
