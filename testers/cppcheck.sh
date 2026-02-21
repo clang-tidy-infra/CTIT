@@ -2,15 +2,15 @@
 set -euo pipefail
 
 CHECK_NAME="${1:-""}"
+SOURCE_DIR="${2:-""}"
 
-if [ -z "$CHECK_NAME" ]; then
-    echo "Error: Check name is required."
-    echo "Usage: $0 <check_name>"
+if [ -z "$CHECK_NAME" ] || [ -z "$SOURCE_DIR" ]; then
+    echo "Error: Check name and source directory are required."
+    echo "Usage: $0 <check_name> <source_dir>"
     exit 1
 fi
 
 ROOT_DIR=$(pwd)
-SOURCE_DIR="$ROOT_DIR/test-projects/cppcheck"
 BUILD_DIR="$SOURCE_DIR/build"
 LOG_DIR="$ROOT_DIR/logs"
 LOG_FILE="$LOG_DIR/cppcheck.log"
@@ -50,6 +50,7 @@ cmake -S "$SOURCE_DIR" \
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
       -DCMAKE_BUILD_TYPE=Release \
       -DBUILD_TESTS=ON \
+      -DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON \
       "${CMAKE_EXTRA_ARGS[@]}"
 
 echo "[Cppcheck] Running Pre-build..."

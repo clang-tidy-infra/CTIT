@@ -6,13 +6,10 @@ import sys
 from dataclasses import dataclass, field
 from typing import TextIO
 
+from testers.config import load_projects
+
 LOG_DIR = "logs"
 OUTPUT_FILE = "issue.md"
-
-# TODO: In the future, dynamically determine the commit hash for accurate linking.
-PROJECT_URLS: dict[str, str] = {
-    "cppcheck": "https://github.com/danmar/cppcheck/blob/main",
-}
 
 
 @dataclass
@@ -72,9 +69,14 @@ def get_relative_path(full_path: str, project_name: str) -> str:
     Returns:
         The relative path string.
     """
-    marker = f"test-projects/{project_name}/"
-    if marker in full_path:
-        return full_path.split(marker)[1]
+    markers = [
+        f"test_projects/{project_name}/",
+        f"test-projects/{project_name}/",
+        f"{project_name}/",
+    ]
+    for marker in markers:
+        if marker in full_path:
+            return full_path.split(marker, 1)[1]
     return os.path.basename(full_path)
 
 
@@ -164,7 +166,9 @@ def write_summary_table(f: TextIO, results: list[ProjectResult]) -> None:
     f.write("\n---\n")
 
 
-def write_project_details(f: TextIO, result: ProjectResult) -> None:
+def write_project_details(
+    f: TextIO, result: ProjectResult, project_urls: dict[str, str]
+) -> None:
     """Writes the detailed breakdown of issues for a single project."""
     if not result.issues and not result.has_crash:
         return
@@ -180,7 +184,7 @@ def write_project_details(f: TextIO, result: ProjectResult) -> None:
     for issue in result.issues:
         files_dict.setdefault(issue.file_path, []).append(issue)
 
-    base_url = PROJECT_URLS.get(result.name)
+    base_url = project_urls.get(result.name)
 
     for file_path, issues in files_dict.items():
         f.write(f"#### 📄 `{file_path}`\n")
@@ -205,19 +209,27 @@ def write_project_details(f: TextIO, result: ProjectResult) -> None:
     f.write("\n</details>\n")
 
 
-def generate_markdown(results: list[ProjectResult], output_path: str) -> None:
+def generate_markdown(
+    results: list[ProjectResult],
+    output_path: str,
+    project_urls: dict[str, str] | None = None,
+) -> None:
     """
     Orchestrates the creation of the markdown report.
 
     Args:
         results: List of parsed project results.
         output_path: Destination path for the report.
+        project_urls: Mapping of project names to browse URLs.
     """
+    if project_urls is None:
+        project_urls = {}
+
     try:
         with open(output_path, "w") as f:
             write_summary_table(f, results)
             for res in results:
-                write_project_details(f, res)
+                write_project_details(f, res, project_urls)
         print(f"Report generated: {output_path}")
     except OSError as e:
         print(f"Error writing report to {output_path}: {e}", file=sys.stderr)
@@ -233,10 +245,16 @@ def main():
         print(f"No log files found in '{LOG_DIR}'.", file=sys.stderr)
         sys.exit(0)
 
+    try:
+        projects = load_projects()
+        project_urls = {p.name: p.browse_url for p in projects}
+    except (OSError, KeyError):
+        project_urls = {}
+
     all_results = [parse_log_file(log) for log in log_files]
     all_results.sort(key=lambda x: x.name)
 
-    generate_markdown(all_results, OUTPUT_FILE)
+    generate_markdown(all_results, OUTPUT_FILE, project_urls)
 
 
 if __name__ == "__main__":

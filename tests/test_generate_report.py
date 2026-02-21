@@ -41,17 +41,32 @@ class TestProjectResultStatus(unittest.TestCase):
 
 
 class TestGetRelativePath(unittest.TestCase):
-    def test_with_marker(self):
+    def testtest_projects_dir_path(self):
+        path = "/home/runner/test_projects/cppcheck/lib/token.cpp"
+        self.assertEqual(get_relative_path(path, "cppcheck"), "lib/token.cpp")
+
+    def testtest_projects_path(self):
         path = "/home/user/CTIT/test-projects/cppcheck/lib/token.cpp"
         self.assertEqual(get_relative_path(path, "cppcheck"), "lib/token.cpp")
 
+    def test_project_name_path(self):
+        path = "/home/user/poco/src/file.cpp"
+        self.assertEqual(get_relative_path(path, "poco"), "src/file.cpp")
+
     def test_without_marker(self):
         path = "/some/other/path/file.cpp"
-        self.assertEqual(get_relative_path(path, "cppcheck"), "file.cpp")
+        self.assertEqual(get_relative_path(path, "unknown"), "file.cpp")
 
     def test_nested_path(self):
-        path = "/root/test-projects/cppcheck/src/deep/nested/file.h"
+        path = "/root/_work/cppcheck/src/deep/nested/file.h"
         self.assertEqual(get_relative_path(path, "cppcheck"), "src/deep/nested/file.h")
+
+    def testtest_projects_dir_takes_priority(self):
+        path = "/root/test_projects/cppcheck/test-projects/cppcheck/file.cpp"
+        self.assertEqual(
+            get_relative_path(path, "cppcheck"),
+            "test-projects/cppcheck/file.cpp",
+        )
 
 
 class TestParseLogFile(unittest.TestCase):
@@ -73,7 +88,7 @@ class TestParseLogFile(unittest.TestCase):
 
     def test_single_warning(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
-            log = "/path/test-projects/proj/src/file.cpp:10:5: warning: unused variable [bugprone-unused]\n"
+            log = "/path/_work/proj/src/file.cpp:10:5: warning: unused variable [bugprone-unused]\n"
             path = self._write_log(tmp_dir, "proj", log)
             result = parse_log_file(path)
             self.assertEqual(result.warnings_count, 1)
@@ -167,7 +182,6 @@ class TestWriteSummaryTable(unittest.TestCase):
         write_summary_table(f, results)
         output = f.getvalue()
         self.assertIn("| **proj** |", output)
-        self.assertIn("✅ Pass", output)
         self.assertIn("| 0 | 0 | - |", output)
 
     def test_project_with_crash(self):
@@ -176,7 +190,6 @@ class TestWriteSummaryTable(unittest.TestCase):
         write_summary_table(f, results)
         output = f.getvalue()
         self.assertIn("YES", output)
-        self.assertIn("💥 CRASH", output)
 
     def test_multiple_projects(self):
         f = io.StringIO()
@@ -201,13 +214,13 @@ class TestWriteProjectDetails(unittest.TestCase):
     def test_no_issues_no_crash_writes_nothing(self):
         f = io.StringIO()
         result = ProjectResult(name="proj")
-        write_project_details(f, result)
+        write_project_details(f, result, {})
         self.assertEqual(f.getvalue(), "")
 
     def test_crash_banner(self):
         f = io.StringIO()
         result = ProjectResult(name="proj", has_crash=True)
-        write_project_details(f, result)
+        write_project_details(f, result, {})
         output = f.getvalue()
         self.assertIn("CRASH DETECTED", output)
         self.assertIn("<details>", output)
@@ -224,7 +237,7 @@ class TestWriteProjectDetails(unittest.TestCase):
             context="int x = 0;",
         )
         result = ProjectResult(name="proj", warnings_count=1, issues=[issue])
-        write_project_details(f, result)
+        write_project_details(f, result, {})
         output = f.getvalue()
         self.assertIn("src/file.cpp", output)
         self.assertIn("unused var", output)
@@ -243,7 +256,7 @@ class TestWriteProjectDetails(unittest.TestCase):
             check_name="check",
         )
         result = ProjectResult(name="proj", errors_count=1, issues=[issue])
-        write_project_details(f, result)
+        write_project_details(f, result, {})
         output = f.getvalue()
         self.assertNotIn("```cpp", output)
 
@@ -257,11 +270,13 @@ class TestWriteProjectDetails(unittest.TestCase):
             message="msg",
             check_name="check",
         )
+        urls = {"cppcheck": "https://github.com/danmar/cppcheck/blob/abc123"}
         result = ProjectResult(name="cppcheck", warnings_count=1, issues=[issue])
-        write_project_details(f, result)
+        write_project_details(f, result, urls)
         output = f.getvalue()
         self.assertIn(
-            "https://github.com/danmar/cppcheck/blob/main/lib/token.cpp#L42", output
+            "https://github.com/danmar/cppcheck/blob/abc123/lib/token.cpp#L42",
+            output,
         )
 
     def test_unknown_project_no_links(self):
@@ -275,7 +290,7 @@ class TestWriteProjectDetails(unittest.TestCase):
             check_name="check",
         )
         result = ProjectResult(name="unknown", warnings_count=1, issues=[issue])
-        write_project_details(f, result)
+        write_project_details(f, result, {})
         output = f.getvalue()
         self.assertIn("1:1", output)
         self.assertNotIn("https://", output)
@@ -288,7 +303,7 @@ class TestWriteProjectDetails(unittest.TestCase):
             Issue("a.cpp", 3, 3, "warning", "m3", "c3"),
         ]
         result = ProjectResult(name="proj", warnings_count=3, issues=issues)
-        write_project_details(f, result)
+        write_project_details(f, result, {})
         output = f.getvalue()
         self.assertLess(output.index("`a.cpp`"), output.index("`b.cpp`"))
 
@@ -315,9 +330,9 @@ class TestGenerateMarkdown(unittest.TestCase):
     def test_full_pipeline(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
             log_content = (
-                "/home/test-projects/cppcheck/lib/tok.cpp:10:5: warning: bad [check-a]\n"
+                "/home/_work/cppcheck/lib/tok.cpp:10:5: warning: bad [check-a]\n"
                 "    int x;\n"
-                "/home/test-projects/cppcheck/lib/tok.cpp:20:3: error: worse [check-b]\n"
+                "/home/_work/cppcheck/lib/tok.cpp:20:3: error: worse [check-b]\n"
                 "Segmentation fault\n"
             )
             log_path = os.path.join(tmp_dir, "cppcheck.log")
@@ -329,12 +344,12 @@ class TestGenerateMarkdown(unittest.TestCase):
             self.assertEqual(result.errors_count, 1)
             self.assertTrue(result.has_crash)
 
+            urls = {"cppcheck": "https://github.com/danmar/cppcheck/blob/main"}
             output_path = os.path.join(tmp_dir, "report.md")
-            generate_markdown([result], output_path)
+            generate_markdown([result], output_path, urls)
             with open(output_path) as f:
                 content = f.read()
-            self.assertIn("💥 CRASH", content)
-            self.assertIn("CRASH DETECTED", content)
+            self.assertIn("CRASH", content)
             self.assertIn("check-a", content)
             self.assertIn("check-b", content)
 

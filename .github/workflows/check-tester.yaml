@@ -29,8 +29,8 @@ jobs:
         id: set-runner
         uses: mikehardy/runner-fallback-action@dc7732f9e532c451b2527b288ba8d58fd4b0a4ca # v1.1.0
         with:
-          primary-runner: "self-hosted"
-          fallback-runner: "ubuntu-latest"
+          primary-runner: "local-runner"
+          fallback-runner: "self-hosted"
           github-token: ${{ secrets.RUNNER_ACCESS_TOKEN }}
 
   build:
@@ -64,6 +64,9 @@ jobs:
           git -C llvm-project checkout .
           git -C llvm-project clean -fdx
 
+      - name: Clone test projects
+        run: python3 -m testers.clone_projects --work-dir test_projects
+
       - name: Parse Inputs
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
@@ -91,21 +94,21 @@ jobs:
         run: bash build.sh
 
       - name: Run Check on cppcheck
-        run: bash testers/cppcheck.sh "${{ env.CHECK_NAME }}"
+        run: bash testers/cppcheck.sh "${{ env.CHECK_NAME }}" "$PWD/test_projects/cppcheck"
         env:
           CHECK_NAME: ${{ env.CHECK_NAME }}
 
       - name: Run Check on LLVM
-        run: bash testers/llvm.sh "${{ env.CHECK_NAME }}"
+        run: bash testers/llvm.sh "${{ env.CHECK_NAME }}" "$PWD/llvm-project"
         env:
           CHECK_NAME: ${{ env.CHECK_NAME }}
 
       - name: Generate Report
         run: |
-          python3 testers/generate_report.py
+          python3 -m testers.generate_report
 
       - name: Artifacts
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         id: artifact
         with:
           name: ctit-logs
@@ -115,6 +118,6 @@ jobs:
 
       - name: Report
         if: github.event_name != 'workflow_dispatch'
-        uses: thollander/actions-comment-pull-request@fabd468d3a1a0b97feee5f6b9e499eab0dd903f6 # v2.5.0
+        uses: thollander/actions-comment-pull-request@24bffb9b452ba05a4f3f77933840a6a841d1b32b # v3.0.1
         with:
           filePath: issue.md
