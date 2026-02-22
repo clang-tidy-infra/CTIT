@@ -93,15 +93,11 @@ jobs:
       - name: Build Clang-tidy
         run: bash build.sh
 
-      - name: Run Check on cppcheck
-        run: bash testers/cppcheck.sh "${{ env.CHECK_NAME }}" "$PWD/test_projects/cppcheck"
-        env:
-          CHECK_NAME: ${{ env.CHECK_NAME }}
-
-      - name: Run Check on LLVM
-        run: bash testers/llvm.sh "${{ env.CHECK_NAME }}" "$PWD/llvm-project"
-        env:
-          CHECK_NAME: ${{ env.CHECK_NAME }}
+      - name: Run Analysis
+        run: >
+          ./ctit.py analyze
+          --check-name "${{ env.CHECK_NAME }}"
+          ${{ env.TIDY_CONFIG && format('--tidy-config "{0}"', env.TIDY_CONFIG) || '' }}
 
       - name: Generate Report
         run: |
