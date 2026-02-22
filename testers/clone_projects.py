@@ -8,13 +8,17 @@ from testers.config import load_projects
 
 
 def clone_project(name: str, url: str, commit: str, dest_dir: str) -> None:
-    """Clone a project and checkout a specific commit."""
+    """Shallow-clone a project and checkout a specific commit."""
     if not os.path.isdir(dest_dir):
         subprocess.run(
-            ["git", "clone", url, dest_dir],
+            ["git", "clone", "--depth", "1", "--no-checkout", url, dest_dir],
             check=True,
         )
 
+    subprocess.run(
+        ["git", "-C", dest_dir, "fetch", "--depth", "1", "origin", commit],
+        check=True,
+    )
     subprocess.run(
         ["git", "-C", dest_dir, "checkout", commit],
         check=True,
