@@ -123,8 +123,7 @@ class TestRunClangTidy(unittest.TestCase):
 
             args = mock_popen.call_args[0][0]
             self.assertIn("/bin/clang-tidy", args)
-            self.assertIn("-checks", args)
-            self.assertIn("-*,bugprone-*", args)
+            self.assertIn("-checks=-*,bugprone-*", args)
             self.assertIn("-quiet", args)
             self.assertNotIn("/src", " ".join(args))
 

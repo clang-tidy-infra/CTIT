@@ -108,8 +108,7 @@ def run_clang_tidy(
         clang_tidy_bin,
         "-p",
         build_dir,
-        "-checks",
-        f"-*,{check_name}",
+        f"-checks=-*,{check_name}",
         "-quiet",
     ]
 
