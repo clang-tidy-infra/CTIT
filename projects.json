@@ -3,7 +3,8 @@
     "cppcheck": {
       "url": "https://github.com/danmar/cppcheck.git",
       "commit": "1e79f7ffa1de4b9dc34cd96080f7d78c925d19b0",
-      "cmake_flags": ["-DBUILD_TESTS=ON", "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"]
+      "cmake_flags": ["-DBUILD_TESTS=ON", "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"],
+      "build_targets": ["cppcheck-core"]
     },
     "llvm-project": {
       "url": "https://github.com/llvm/llvm-project.git",
