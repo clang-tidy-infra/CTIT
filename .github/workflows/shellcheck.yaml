@@ -28,4 +28,4 @@ jobs:
           persist-credentials: false
 
       - name: Run ShellCheck
-        run: shellcheck build.sh apply_patch.sh testers/*.sh tests/*.sh
+        run: shellcheck build.sh apply_patch.sh tests/*.sh
