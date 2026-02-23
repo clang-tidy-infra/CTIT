@@ -15,6 +15,15 @@ RUN apt-get update && \
     zlib1g-dev \
     flex \
     bison \
+    libx11-dev \
+    libxrandr-dev \
+    libxcursor-dev \
+    libxi-dev \
+    libudev-dev \
+    libgl-dev \
+    libflac-dev \
+    libogg-dev \
+    libvorbis-dev \
     sccache \
     zip \
     unzip \
