@@ -4,10 +4,14 @@
 import argparse
 import sys
 
+from testers.analyze import analyze
 from testers.clone_projects import clone_projects
 from testers.config import CONFIG_FILE, PROJECTS_DIR
-from testers.generate_report import DEFAULT_LOG_DIR, DEFAULT_OUTPUT_FILE
-from testers.generate_report import generate_report
+from testers.generate_report import (
+    DEFAULT_LOG_DIR,
+    DEFAULT_OUTPUT_FILE,
+    generate_report,
+)
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -32,6 +36,21 @@ def main(argv: list[str] | None = None) -> None:
         help=f"Path to config file (default: {CONFIG_FILE})",
     )
 
+    analyze_parser = subparsers.add_parser(
+        "analyze",
+        help="Run clang-tidy analysis on test projects",
+    )
+    analyze_parser.add_argument(
+        "--check-name",
+        required=True,
+        help="Clang-tidy check name pattern (e.g. bugprone-*)",
+    )
+    analyze_parser.add_argument(
+        "--tidy-config",
+        default=None,
+        help="Extra clang-tidy configuration string",
+    )
+
     report_parser = subparsers.add_parser(
         "report",
         help="Generate markdown report from clang-tidy logs",
@@ -54,6 +73,11 @@ def main(argv: list[str] | None = None) -> None:
         sys.exit(1)
     elif args.command == "clone":
         clone_projects(work_dir=args.work_dir, config_path=args.config)
+    elif args.command == "analyze":
+        analyze(
+            check_name=args.check_name,
+            tidy_config=args.tidy_config,
+        )
     elif args.command == "report":
         generate_report(log_dir=args.log_dir, output=args.output)
 

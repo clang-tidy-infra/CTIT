@@ -64,6 +64,12 @@ jobs:
           git -C llvm-project checkout .
           git -C llvm-project clean -fdx
 
+      - name: Cache test projects
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: test_projects
+          key: test-projects-${{ hashFiles('projects.json') }}
+
       - name: Clone test projects
         run: ./ctit.py clone --work-dir test_projects
 
@@ -93,15 +99,11 @@ jobs:
       - name: Build Clang-tidy
         run: bash build.sh
 
-      - name: Run Check on cppcheck
-        run: bash testers/cppcheck.sh "${{ env.CHECK_NAME }}" "$PWD/test_projects/cppcheck"
-        env:
-          CHECK_NAME: ${{ env.CHECK_NAME }}
-
-      - name: Run Check on LLVM
-        run: bash testers/llvm.sh "${{ env.CHECK_NAME }}" "$PWD/llvm-project"
-        env:
-          CHECK_NAME: ${{ env.CHECK_NAME }}
+      - name: Run Analysis
+        run: >
+          ./ctit.py analyze
+          --check-name "${{ env.CHECK_NAME }}"
+          ${{ env.TIDY_CONFIG && format('--tidy-config "{0}"', env.TIDY_CONFIG) || '' }}
 
       - name: Generate Report
         run: |
