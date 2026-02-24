@@ -60,35 +60,6 @@
         "-DABSL_BUILD_TEST_HELPERS=OFF",
         "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"
       ]
-    },
-    "opencv": {
-      "url": "https://github.com/opencv/opencv.git",
-      "commit": "95be2f2af8d70c1fa703192d9d338c53323b24a1",
-      "cmake_flags": [
-        "-DBUILD_TESTS=OFF",
-        "-DBUILD_PERF_TESTS=OFF",
-        "-DBUILD_EXAMPLES=OFF",
-        "-DBUILD_DOCS=OFF",
-        "-DBUILD_JAVA=OFF",
-        "-DBUILD_opencv_python3=OFF",
-        "-DBUILD_opencv_python2=OFF",
-        "-DWITH_CUDA=OFF",
-        "-DWITH_FFMPEG=OFF",
-        "-DWITH_GTK=OFF",
-        "-DWITH_VTK=OFF",
-        "-DWITH_GSTREAMER=OFF",
-        "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"
-      ]
-    },
-    "SFML": {
-      "url": "https://github.com/SFML/SFML.git",
-      "commit": "51196acddb879ee1a276ba1a39c1fec590114abf",
-      "cmake_flags": [
-        "-DSFML_BUILD_EXAMPLES=OFF",
-        "-DSFML_BUILD_DOC=OFF",
-        "-DSFML_BUILD_TEST_SUITE=OFF",
-        "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"
-      ]
     }
   }
 }
