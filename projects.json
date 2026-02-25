@@ -30,6 +30,36 @@
         "clang-linker-wrapper"
       ],
       "file_regex": "clang/.*(?<!\\.S)$"
+    },
+    "doxygen": {
+      "url": "https://github.com/doxygen/doxygen.git",
+      "commit": "29e1b7ca1171a0026c3e928408877d2cd5c7adca",
+      "cmake_flags": [
+        "-Dbuild_wizard=OFF",
+        "-Dbuild_search=OFF",
+        "-Dbuild_doc=OFF",
+        "-Duse_libclang=OFF",
+        "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"
+      ],
+      "build_targets": ["generate_configvalues_header"]
+    },
+    "poco": {
+      "url": "https://github.com/pocoproject/poco.git",
+      "commit": "78a5716858c481631bc66048641c1ba884fc509e",
+      "cmake_flags": [
+        "-DENABLE_TESTS=OFF",
+        "-DENABLE_SAMPLES=OFF",
+        "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"
+      ]
+    },
+    "abseil-cpp": {
+      "url": "https://github.com/abseil/abseil-cpp.git",
+      "commit": "64c1b40d732cccd660df378a1639505bbdbfe5b3",
+      "cmake_flags": [
+        "-DABSL_BUILD_TESTING=OFF",
+        "-DABSL_BUILD_TEST_HELPERS=OFF",
+        "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"
+      ]
     }
   }
 }
