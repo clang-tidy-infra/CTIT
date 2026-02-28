@@ -4,6 +4,12 @@ patch.diff
 __pycache__
 _work/
 test_projects/
+venv/
+.mypy_cache
+.pytest_cache
+.ruff_cache
+logs/
+issue.md
 
 # Distribution/packaging
 develop-eggs/
