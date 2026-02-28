@@ -4,7 +4,7 @@
 import argparse
 import sys
 
-from testers.analyze import analyze
+from testers.analyze import analyze, configure
 from testers.clone_projects import clone_projects
 from testers.config import CONFIG_FILE, PROJECTS_DIR
 from testers.generate_report import (
@@ -34,6 +34,11 @@ def main(argv: list[str] | None = None) -> None:
         "--config",
         default=CONFIG_FILE,
         help=f"Path to config file (default: {CONFIG_FILE})",
+    )
+
+    subparsers.add_parser(
+        "configure",
+        help="Configure and build test projects for analysis",
     )
 
     analyze_parser = subparsers.add_parser(
@@ -73,6 +78,8 @@ def main(argv: list[str] | None = None) -> None:
         sys.exit(1)
     elif args.command == "clone":
         clone_projects(work_dir=args.work_dir, config_path=args.config)
+    elif args.command == "configure":
+        configure()
     elif args.command == "analyze":
         analyze(
             check_name=args.check_name,

@@ -99,6 +99,9 @@ jobs:
       - name: Build Clang-tidy
         run: bash build.sh
 
+      - name: Configure test projects
+        run: ./ctit.py configure
+
       - name: Run Analysis
         run: >
           ./ctit.py analyze
