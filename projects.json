@@ -29,7 +29,7 @@
         "clang-scan-deps",
         "clang-linker-wrapper"
       ],
-      "file_regex": "clang/.*(?<!\\.S)$"
+      "file_regex": "clang/(?!.*clang-fuzzer/).*(?<!\\.S)$"
     },
     "doxygen": {
       "url": "https://github.com/doxygen/doxygen.git",
