@@ -60,6 +60,17 @@
         "-DABSL_BUILD_TEST_HELPERS=OFF",
         "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"
       ]
+    },
+    "curl": {
+      "url": "https://github.com/curl/curl.git",
+      "commit": "aa0be708b9d0c3f147887dbd153d8593294f2717",
+      "cmake_flags": [
+        "-DBUILD_TESTING=ON",
+        "-DCURL_ENABLE_SSL=OFF",
+        "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"
+      ],
+      "build_targets": ["curl"],
+      "file_regex": "(?!tests/.*\\.c$).*"
     }
   }
 }
