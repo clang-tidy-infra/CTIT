@@ -41,7 +41,8 @@
         "-Duse_libclang=OFF",
         "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"
       ],
-      "build_targets": ["generate_configvalues_header"]
+      "build_targets": ["generate_configvalues_header"],
+      "file_regex": "(?!.*generated_src/).*"
     },
     "poco": {
       "url": "https://github.com/pocoproject/poco.git",
