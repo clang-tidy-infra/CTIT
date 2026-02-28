@@ -1,4 +1,5 @@
 import os
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import MagicMock, patch
@@ -45,7 +46,10 @@ class TestRemoveClangTidyConfigs(unittest.TestCase):
 
 class TestConfigureCmake(unittest.TestCase):
     @patch("testers.analyze.shutil.which", return_value=None)
-    @patch("testers.analyze.subprocess.run")
+    @patch(
+        "testers.analyze.subprocess.run",
+        return_value=subprocess.CompletedProcess([], 0, stdout=b""),
+    )
     def test_basic_flags(self, mock_run, mock_which):
         with tempfile.TemporaryDirectory() as tmp_dir:
             build_dir = os.path.join(tmp_dir, "build")
@@ -62,7 +66,10 @@ class TestConfigureCmake(unittest.TestCase):
             self.assertTrue(os.path.isdir(build_dir))
 
     @patch("testers.analyze.shutil.which", return_value="/usr/bin/sccache")
-    @patch("testers.analyze.subprocess.run")
+    @patch(
+        "testers.analyze.subprocess.run",
+        return_value=subprocess.CompletedProcess([], 0, stdout=b""),
+    )
     def test_with_sccache(self, mock_run, mock_which):
         with tempfile.TemporaryDirectory() as tmp_dir:
             build_dir = os.path.join(tmp_dir, "build")
@@ -73,7 +80,10 @@ class TestConfigureCmake(unittest.TestCase):
             self.assertIn("-DCMAKE_CXX_COMPILER_LAUNCHER=sccache", args)
 
     @patch("testers.analyze.shutil.which", return_value=None)
-    @patch("testers.analyze.subprocess.run")
+    @patch(
+        "testers.analyze.subprocess.run",
+        return_value=subprocess.CompletedProcess([], 0, stdout=b""),
+    )
     def test_extra_flags_appended(self, mock_run, mock_which):
         with tempfile.TemporaryDirectory() as tmp_dir:
             build_dir = os.path.join(tmp_dir, "build")
@@ -91,7 +101,10 @@ class TestBuildProject(unittest.TestCase):
         build_project("/build", [])
         mock_run.assert_not_called()
 
-    @patch("testers.analyze.subprocess.run")
+    @patch(
+        "testers.analyze.subprocess.run",
+        return_value=subprocess.CompletedProcess([], 0, stdout=b""),
+    )
     def test_build_specific_targets(self, mock_run):
         build_project("/build", ["clang", "clang-tidy"])
         args = mock_run.call_args[0][0]

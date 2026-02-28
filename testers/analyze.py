@@ -80,14 +80,27 @@ def configure_cmake(source_dir: str, build_dir: str, extra_flags: list[str]) -> 
         ]
 
     cmd += extra_flags
-    subprocess.run(cmd, check=True)
+    result = subprocess.run(
+        cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+    )
+    # Ensure sequential output in CI logs
+    sys.stdout.buffer.write(result.stdout)
+    sys.stdout.buffer.flush()
 
 
 def build_project(build_dir: str, targets: list[str]) -> None:
     """Build specific project targets. Does nothing if targets is empty."""
     if not targets:
         return
-    subprocess.run(["ninja", "-C", build_dir] + targets, check=True)
+    result = subprocess.run(
+        ["ninja", "-C", build_dir] + targets,
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    # Ensure sequential output in CI logs
+    sys.stdout.buffer.write(result.stdout)
+    sys.stdout.buffer.flush()
 
 
 def run_clang_tidy(
