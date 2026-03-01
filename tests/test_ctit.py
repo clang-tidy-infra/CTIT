@@ -32,6 +32,11 @@ class TestCtitCli(unittest.TestCase):
             work_dir="/tmp/out", config_path="custom.json"
         )
 
+    @patch("ctit.configure")
+    def test_configure_calls_configure(self, mock_configure):
+        main(["configure"])
+        mock_configure.assert_called_once()
+
     @patch("ctit.analyze")
     def test_analyze_calls_analyze(self, mock_analyze):
         main(["analyze", "--check-name", "bugprone-*"])

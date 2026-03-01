@@ -97,6 +97,9 @@ def parse_log_file(log_path: str) -> ProjectResult:
     # Example: /path/to/file.cpp:10:5: warning: message [check-name]
     issue_pattern = re.compile(r"^(.+):(\d+):(\d+): (warning|error): (.+) \[(.+)\]$")
 
+    # Deduplicate by (file_path, line, col, check_name)
+    seen: set[tuple[str, int, int, str]] = set()
+
     try:
         with open(log_path, errors="replace") as f:
             lines = f.readlines()
@@ -115,6 +118,12 @@ def parse_log_file(log_path: str) -> ProjectResult:
                     match.groups()
                 )
 
+                rel_path = get_relative_path(raw_path, project_name)
+                key = (rel_path, int(line_num), int(col_num), check_name)
+                if key in seen:
+                    continue
+                seen.add(key)
+
                 # Update counts
                 if severity == "warning":
                     result.warnings_count += 1
@@ -130,7 +139,7 @@ def parse_log_file(log_path: str) -> ProjectResult:
                         context_code = next_line
 
                 issue = Issue(
-                    file_path=get_relative_path(raw_path, project_name),
+                    file_path=rel_path,
                     line=int(line_num),
                     col=int(col_num),
                     severity=severity,

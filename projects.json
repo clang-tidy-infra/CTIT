@@ -29,7 +29,7 @@
         "clang-scan-deps",
         "clang-linker-wrapper"
       ],
-      "file_regex": "clang/.*(?<!\\.S)$"
+      "file_regex": "clang/(?!.*clang-fuzzer/).*(?<!\\.S)$"
     },
     "doxygen": {
       "url": "https://github.com/doxygen/doxygen.git",
@@ -41,7 +41,8 @@
         "-Duse_libclang=OFF",
         "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"
       ],
-      "build_targets": ["generate_configvalues_header"]
+      "build_targets": ["generate_configvalues_header"],
+      "file_regex": "(?!.*generated_src/).*"
     },
     "poco": {
       "url": "https://github.com/pocoproject/poco.git",
@@ -71,6 +72,16 @@
       ],
       "build_targets": ["curl"],
       "file_regex": "(?!tests/.*\\.c$).*"
+    },
+    "stdexec": {
+      "url": "https://github.com/NVIDIA/stdexec.git",
+      "commit": "0758df65c6571076d67276362c07146e13958740",
+      "cmake_flags": [
+        "-DSTDEXEC_BUILD_TESTS=OFF",
+        "-DSTDEXEC_BUILD_EXAMPLES=OFF",
+        "-DSTDEXEC_BUILD_DOCS=OFF",
+        "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"
+      ]
     }
   }
 }

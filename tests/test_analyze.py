@@ -9,6 +9,7 @@ from testers.analyze import (
     analyze_project,
     build_project,
     configure_cmake,
+    configure_project,
     remove_clang_tidy_configs,
     run_clang_tidy,
     get_analysis_configs,
@@ -186,12 +187,11 @@ class TestRunClangTidy(unittest.TestCase):
             self.assertEqual(content, "line1\nline2\n")
 
 
-class TestAnalyzeProject(unittest.TestCase):
-    @patch("testers.analyze.run_clang_tidy")
+class TestConfigureProject(unittest.TestCase):
     @patch("testers.analyze.build_project")
     @patch("testers.analyze.configure_cmake")
     @patch("testers.analyze.remove_clang_tidy_configs")
-    def test_calls_steps_in_order(self, mock_remove, mock_cmake, mock_build, mock_tidy):
+    def test_calls_steps_in_order(self, mock_remove, mock_cmake, mock_build):
         project = Project(
             name="cppcheck", url="https://example.com/p.git", commit="abc"
         )
@@ -199,6 +199,46 @@ class TestAnalyzeProject(unittest.TestCase):
             name="cppcheck",
             cmake_flags=["-DBUILD_TESTS=ON"],
         )
+        configure_project(project, config, "/work/cppcheck")
+
+        mock_remove.assert_called_once()
+        mock_cmake.assert_called_once()
+        mock_build.assert_called_once()
+
+        cmake_args = mock_cmake.call_args[0]
+        self.assertIn("-DBUILD_TESTS=ON", cmake_args[2])
+
+        build_args = mock_build.call_args[0]
+        self.assertEqual(build_args[1], [])
+
+    @patch("testers.analyze.build_project")
+    @patch("testers.analyze.configure_cmake")
+    @patch("testers.analyze.remove_clang_tidy_configs")
+    def test_cmake_source_subdir(self, mock_remove, mock_cmake, mock_build):
+        project = Project(
+            name="llvm-project", url="https://example.com/llvm.git", commit="abc"
+        )
+        config = AnalysisConfig(
+            name="llvm-project",
+            cmake_source_subdir="llvm",
+            build_targets=["clang"],
+        )
+        configure_project(project, config, "/work/llvm-project")
+
+        cmake_args = mock_cmake.call_args[0]
+        self.assertTrue(cmake_args[0].endswith("/llvm"))
+
+        build_args = mock_build.call_args[0]
+        self.assertIn("clang", build_args[1])
+
+
+class TestAnalyzeProject(unittest.TestCase):
+    @patch("testers.analyze.run_clang_tidy")
+    def test_runs_clang_tidy(self, mock_tidy):
+        project = Project(
+            name="cppcheck", url="https://example.com/p.git", commit="abc"
+        )
+        config = AnalysisConfig(name="cppcheck")
         analyze_project(
             project,
             config,
@@ -209,45 +249,7 @@ class TestAnalyzeProject(unittest.TestCase):
             "/logs",
         )
 
-        mock_remove.assert_called_once()
-        mock_cmake.assert_called_once()
-        mock_build.assert_called_once()
         mock_tidy.assert_called_once()
-
-        cmake_args = mock_cmake.call_args[0]
-        self.assertIn("-DBUILD_TESTS=ON", cmake_args[2])
-
-        build_args = mock_build.call_args[0]
-        self.assertEqual(build_args[1], [])
-
-    @patch("testers.analyze.run_clang_tidy")
-    @patch("testers.analyze.build_project")
-    @patch("testers.analyze.configure_cmake")
-    @patch("testers.analyze.remove_clang_tidy_configs")
-    def test_cmake_source_subdir(self, mock_remove, mock_cmake, mock_build, mock_tidy):
-        project = Project(
-            name="llvm-project", url="https://example.com/llvm.git", commit="abc"
-        )
-        config = AnalysisConfig(
-            name="llvm-project",
-            cmake_source_subdir="llvm",
-            build_targets=["clang"],
-        )
-        analyze_project(
-            project,
-            config,
-            "/work/llvm-project",
-            "/bin/ct",
-            "/script/rct.py",
-            "check",
-            "/logs",
-        )
-
-        cmake_args = mock_cmake.call_args[0]
-        self.assertTrue(cmake_args[0].endswith("/llvm"))
-
-        build_args = mock_build.call_args[0]
-        self.assertIn("clang", build_args[1])
 
 
 class TestAnalyze(unittest.TestCase):

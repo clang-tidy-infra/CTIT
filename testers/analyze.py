@@ -130,6 +130,40 @@ def run_clang_tidy(
         proc.wait()
 
 
+def configure_project(
+    project: Project,
+    config: AnalysisConfig,
+    source_dir: str,
+) -> None:
+    """Configure and build a single project."""
+    source_dir = os.path.abspath(source_dir)
+    build_dir = os.path.join(source_dir, "build")
+
+    cmake_source = source_dir
+    if config.cmake_source_subdir:
+        cmake_source = os.path.join(source_dir, config.cmake_source_subdir)
+
+    print(f"[{project.name}] Configuring...")
+    remove_clang_tidy_configs(source_dir)
+    configure_cmake(cmake_source, build_dir, config.cmake_flags)
+    build_project(build_dir, config.build_targets)
+    print(f"[{project.name}] Done.")
+
+
+def configure(
+    work_dir: str = PROJECTS_DIR,
+    config_path: str = CONFIG_FILE,
+) -> None:
+    """Configure all projects (cmake + build targets)."""
+    projects = load_projects(config_path)
+    configs = get_analysis_configs(config_path)
+
+    for project in projects:
+        config = configs.get(project.name, AnalysisConfig(name=project.name))
+        source_dir = os.path.join(work_dir, project.name)
+        configure_project(project, config, source_dir)
+
+
 def analyze_project(
     project: Project,
     config: AnalysisConfig,
@@ -140,20 +174,13 @@ def analyze_project(
     log_dir: str,
     tidy_config: str | None = None,
 ) -> None:
-    """Run full analysis pipeline for a single project."""
+    """Run clang-tidy analysis on a single project."""
     source_dir = os.path.abspath(source_dir)
     build_dir = os.path.join(source_dir, "build")
     log_file = os.path.join(log_dir, f"{project.name}.log")
 
-    cmake_source = source_dir
-    if config.cmake_source_subdir:
-        cmake_source = os.path.join(source_dir, config.cmake_source_subdir)
-
     print(f"[{project.name}] Starting analysis for check: {check_name}")
 
-    remove_clang_tidy_configs(source_dir)
-    configure_cmake(cmake_source, build_dir, config.cmake_flags)
-    build_project(build_dir, config.build_targets)
     run_clang_tidy(
         clang_tidy_bin,
         run_tidy_script,
