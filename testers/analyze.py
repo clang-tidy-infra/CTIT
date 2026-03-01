@@ -10,10 +10,7 @@ from dataclasses import dataclass, field
 
 from testers.config import CONFIG_FILE, PROJECTS_DIR, Project, load_projects
 
-DEFAULT_CLANG_TIDY_BIN = "llvm-project/build/bin/clang-tidy"
-DEFAULT_RUN_TIDY_SCRIPT = (
-    "llvm-project/clang-tools-extra/clang-tidy/tool/run-clang-tidy.py"
-)
+DEFAULT_CLANG_TIDY_BIN = "clang-tidy"
 DEFAULT_LOG_DIR = "logs"
 
 ANALYSIS_CONFIG_FIELDS = {
@@ -47,6 +44,15 @@ def get_analysis_configs(
         fields = {k: v for k, v in proj.items() if k in ANALYSIS_CONFIG_FIELDS}
         configs[name] = AnalysisConfig(name=name, **fields)
     return configs
+
+
+def find_run_tidy_script() -> str | None:
+    """Try to find run-clang-tidy script in PATH."""
+    for name in ("run-clang-tidy", "run-clang-tidy.py"):
+        path = shutil.which(name)
+        if path:
+            return path
+    return None
 
 
 def remove_clang_tidy_configs(source_dir: str) -> None:
@@ -228,21 +234,30 @@ def analyze(
     tidy_config: str | None = None,
     work_dir: str = PROJECTS_DIR,
     clang_tidy_bin: str = DEFAULT_CLANG_TIDY_BIN,
-    run_tidy_script: str = DEFAULT_RUN_TIDY_SCRIPT,
+    run_tidy_script: str | None = None,
     log_dir: str = DEFAULT_LOG_DIR,
     config_path: str = CONFIG_FILE,
 ) -> None:
     """Run clang-tidy analysis on all configured projects."""
-    if not os.path.isfile(clang_tidy_bin):
+    if not shutil.which(clang_tidy_bin) and not os.path.isfile(clang_tidy_bin):
         print(
-            f"Error: clang-tidy binary not found at {clang_tidy_bin}",
+            f"Error: clang-tidy binary not found: {clang_tidy_bin}",
             file=sys.stderr,
         )
         sys.exit(1)
 
-    if not os.path.isfile(run_tidy_script):
+    if run_tidy_script is None:
+        run_tidy_script = find_run_tidy_script()
+        if run_tidy_script is None:
+            print(
+                "Error: run-clang-tidy script not found in PATH.\n"
+                "Install it or use '--run-tidy-script' flag.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+    elif not os.path.isfile(run_tidy_script) and not shutil.which(run_tidy_script):
         print(
-            f"Error: run-clang-tidy.py not found at {run_tidy_script}",
+            f"Error: run-clang-tidy script not found: {run_tidy_script}",
             file=sys.stderr,
         )
         sys.exit(1)

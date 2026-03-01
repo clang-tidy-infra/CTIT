@@ -11,6 +11,7 @@ from testers.analyze import (
     check_clang_compiler,
     configure_cmake,
     configure_project,
+    find_run_tidy_script,
     remove_clang_tidy_configs,
     run_clang_tidy,
     get_analysis_configs,
@@ -298,6 +299,26 @@ class TestAnalyzeProject(unittest.TestCase):
         mock_tidy.assert_called_once()
 
 
+class TestFindRunTidyScript(unittest.TestCase):
+    @patch("testers.analyze.shutil.which")
+    def test_finds_run_clang_tidy(self, mock_which):
+        mock_which.side_effect = lambda name: (
+            "/usr/bin/run-clang-tidy" if name == "run-clang-tidy" else None
+        )
+        self.assertEqual(find_run_tidy_script(), "/usr/bin/run-clang-tidy")
+
+    @patch("testers.analyze.shutil.which")
+    def test_finds_run_clang_tidy_py(self, mock_which):
+        mock_which.side_effect = lambda name: (
+            "/usr/bin/run-clang-tidy.py" if name == "run-clang-tidy.py" else None
+        )
+        self.assertEqual(find_run_tidy_script(), "/usr/bin/run-clang-tidy.py")
+
+    @patch("testers.analyze.shutil.which", return_value=None)
+    def test_returns_none_when_not_found(self, mock_which):
+        self.assertIsNone(find_run_tidy_script())
+
+
 class TestAnalyze(unittest.TestCase):
     def test_exits_when_clang_tidy_missing(self):
         with self.assertRaises(SystemExit) as ctx:
@@ -307,6 +328,19 @@ class TestAnalyze(unittest.TestCase):
                 run_tidy_script="/nonexistent/script.py",
             )
         self.assertEqual(ctx.exception.code, 1)
+
+    @patch("testers.analyze.find_run_tidy_script", return_value=None)
+    def test_exits_when_run_tidy_script_not_found(self, mock_find):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            ct_bin = os.path.join(tmp_dir, "clang-tidy")
+            with open(ct_bin, "w") as f:
+                f.write("")
+            with self.assertRaises(SystemExit) as ctx:
+                analyze(
+                    check_name="check",
+                    clang_tidy_bin=ct_bin,
+                )
+            self.assertEqual(ctx.exception.code, 1)
 
     @patch("testers.analyze.analyze_project")
     @patch("testers.analyze.load_projects")
