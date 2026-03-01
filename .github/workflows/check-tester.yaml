@@ -112,6 +112,22 @@ jobs:
         run: |
           ./ctit.py report
 
+      - name: Install Cursor CLI
+        run: |
+          curl https://cursor.com/install -fsS | bash
+          echo "$HOME/.cursor/bin" >> $GITHUB_PATH
+
+      - name: Analyze False Positives
+        continue-on-error: true
+        timeout-minutes: 30
+        env:
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+        run: >
+          agent -p "Read issue.md and analyze every clang-tidy warning for
+          false positives. Follow the instructions in AGENTS.md. Append your
+          analysis table to the end of issue.md."
+          --model gpt-5.2
+
       - name: Artifacts
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         id: artifact
