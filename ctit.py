@@ -5,14 +5,10 @@ import argparse
 import argcomplete
 import sys
 
-from testers.analyze import analyze, configure
+from testers.analyze import DEFAULT_CLANG_TIDY_BIN, DEFAULT_LOG_DIR, analyze, configure
 from testers.clone_projects import clone_projects
 from testers.config import CONFIG_FILE, PROJECTS_DIR
-from testers.generate_report import (
-    DEFAULT_LOG_DIR,
-    DEFAULT_OUTPUT_FILE,
-    generate_report,
-)
+from testers.generate_report import DEFAULT_OUTPUT_FILE, generate_report
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -34,12 +30,22 @@ def main(argv: list[str] | None = None) -> None:
     clone_parser.add_argument(
         "--config",
         default=CONFIG_FILE,
-        help=f"Path to config file (default: {CONFIG_FILE})",
+        help="Path to config file (default: bundled projects.json)",
     )
 
-    subparsers.add_parser(
+    configure_parser = subparsers.add_parser(
         "configure",
         help="Configure and build test projects for analysis",
+    )
+    configure_parser.add_argument(
+        "--work-dir",
+        default=PROJECTS_DIR,
+        help=f"Directory containing cloned projects (default: {PROJECTS_DIR})",
+    )
+    configure_parser.add_argument(
+        "--config",
+        default=CONFIG_FILE,
+        help="Path to config file (default: bundled projects.json)",
     )
 
     analyze_parser = subparsers.add_parser(
@@ -52,9 +58,34 @@ def main(argv: list[str] | None = None) -> None:
         help="Clang-tidy check name pattern (e.g. bugprone-*)",
     )
     analyze_parser.add_argument(
+        "--clang-tidy-binary",
+        default=DEFAULT_CLANG_TIDY_BIN,
+        help=f"Path to clang-tidy binary (default: {DEFAULT_CLANG_TIDY_BIN})",
+    )
+    analyze_parser.add_argument(
+        "--run-tidy-script",
+        default=None,
+        help="Path to run-clang-tidy script (default: auto-detect from PATH)",
+    )
+    analyze_parser.add_argument(
         "--tidy-config",
         default=None,
         help="Extra clang-tidy configuration string",
+    )
+    analyze_parser.add_argument(
+        "--work-dir",
+        default=PROJECTS_DIR,
+        help=f"Directory containing cloned projects (default: {PROJECTS_DIR})",
+    )
+    analyze_parser.add_argument(
+        "--log-dir",
+        default=DEFAULT_LOG_DIR,
+        help=f"Directory for analysis logs (default: {DEFAULT_LOG_DIR})",
+    )
+    analyze_parser.add_argument(
+        "--config",
+        default=CONFIG_FILE,
+        help="Path to config file (default: bundled projects.json)",
     )
 
     report_parser = subparsers.add_parser(
@@ -81,11 +112,16 @@ def main(argv: list[str] | None = None) -> None:
     elif args.command == "clone":
         clone_projects(work_dir=args.work_dir, config_path=args.config)
     elif args.command == "configure":
-        configure()
+        configure(work_dir=args.work_dir, config_path=args.config)
     elif args.command == "analyze":
         analyze(
             check_name=args.check_name,
             tidy_config=args.tidy_config,
+            clang_tidy_bin=args.clang_tidy_binary,
+            run_tidy_script=args.run_tidy_script,
+            work_dir=args.work_dir,
+            log_dir=args.log_dir,
+            config_path=args.config,
         )
     elif args.command == "report":
         generate_report(log_dir=args.log_dir, output=args.output)

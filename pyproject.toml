@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ctit"
-version = "0.1.0"
+version = "0.2.0"
 description = "Clang Tidy Integration Tester - CI service for testing clang-tidy checks against real-world C/C++ projects"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -60,6 +60,9 @@ dev = [
 [tool.setuptools]
 py-modules = ["ctit"]
 packages = ["testers"]
+
+[tool.setuptools.package-data]
+testers = ["projects.json"]
 
 [tool.black]
 line-length = 88

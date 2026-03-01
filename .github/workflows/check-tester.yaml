@@ -68,7 +68,7 @@ jobs:
         uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         with:
           path: test_projects
-          key: test-projects-${{ hashFiles('projects.json') }}
+          key: test-projects-${{ hashFiles('testers/projects.json') }}
 
       - name: Clone test projects
         run: ./ctit.py clone --work-dir test_projects
@@ -106,6 +106,8 @@ jobs:
         run: >
           ./ctit.py analyze
           --check-name "${{ env.CHECK_NAME }}"
+          --clang-tidy-binary llvm-project/build/bin/clang-tidy
+          --run-tidy-script llvm-project/clang-tools-extra/clang-tidy/tool/run-clang-tidy.py
           ${{ env.TIDY_CONFIG && format('--tidy-config "{0}"', env.TIDY_CONFIG) || '' }}
 
       - name: Generate Report

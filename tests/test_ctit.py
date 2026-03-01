@@ -2,6 +2,8 @@ import unittest
 from unittest.mock import patch
 
 from ctit import main
+from testers.analyze import DEFAULT_CLANG_TIDY_BIN, DEFAULT_LOG_DIR
+from testers.config import CONFIG_FILE, PROJECTS_DIR
 
 
 class TestCtitCli(unittest.TestCase):
@@ -32,10 +34,24 @@ class TestCtitCli(unittest.TestCase):
             work_dir="/tmp/out", config_path="custom.json"
         )
 
+    def test_configure_help(self):
+        with self.assertRaises(SystemExit) as ctx:
+            main(["configure", "--help"])
+        self.assertEqual(ctx.exception.code, 0)
+
     @patch("ctit.configure")
     def test_configure_calls_configure(self, mock_configure):
         main(["configure"])
-        mock_configure.assert_called_once()
+        mock_configure.assert_called_once_with(
+            work_dir=PROJECTS_DIR, config_path=CONFIG_FILE
+        )
+
+    @patch("ctit.configure")
+    def test_configure_with_args(self, mock_configure):
+        main(["configure", "--work-dir", "/tmp/projects", "--config", "custom.json"])
+        mock_configure.assert_called_once_with(
+            work_dir="/tmp/projects", config_path="custom.json"
+        )
 
     @patch("ctit.analyze")
     def test_analyze_calls_analyze(self, mock_analyze):
@@ -43,6 +59,11 @@ class TestCtitCli(unittest.TestCase):
         mock_analyze.assert_called_once_with(
             check_name="bugprone-*",
             tidy_config=None,
+            clang_tidy_bin=DEFAULT_CLANG_TIDY_BIN,
+            run_tidy_script=None,
+            work_dir=PROJECTS_DIR,
+            log_dir=DEFAULT_LOG_DIR,
+            config_path=CONFIG_FILE,
         )
 
     @patch("ctit.analyze")
@@ -59,6 +80,34 @@ class TestCtitCli(unittest.TestCase):
         mock_analyze.assert_called_once_with(
             check_name="readability-*",
             tidy_config="VariableCase: camelBack",
+            clang_tidy_bin=DEFAULT_CLANG_TIDY_BIN,
+            run_tidy_script=None,
+            work_dir=PROJECTS_DIR,
+            log_dir=DEFAULT_LOG_DIR,
+            config_path=CONFIG_FILE,
+        )
+
+    @patch("ctit.analyze")
+    def test_analyze_with_custom_binary(self, mock_analyze):
+        main(
+            [
+                "analyze",
+                "--check-name",
+                "bugprone-*",
+                "--clang-tidy-binary",
+                "/usr/bin/clang-tidy-18",
+                "--run-tidy-script",
+                "/usr/bin/run-clang-tidy-18",
+            ]
+        )
+        mock_analyze.assert_called_once_with(
+            check_name="bugprone-*",
+            tidy_config=None,
+            clang_tidy_bin="/usr/bin/clang-tidy-18",
+            run_tidy_script="/usr/bin/run-clang-tidy-18",
+            work_dir=PROJECTS_DIR,
+            log_dir=DEFAULT_LOG_DIR,
+            config_path=CONFIG_FILE,
         )
 
     @patch("ctit.generate_report")

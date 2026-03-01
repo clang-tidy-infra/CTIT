@@ -1,9 +1,10 @@
 """Shared project configuration for test projects."""
 
 import json
+import os
 from dataclasses import dataclass
 
-CONFIG_FILE = "projects.json"
+CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "projects.json")
 PROJECTS_DIR = "test_projects"
 
 
