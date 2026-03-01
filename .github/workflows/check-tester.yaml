@@ -128,7 +128,7 @@ jobs:
         env:
           CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
         run: >
-          agent -p "Read issue.md and analyze every clang-tidy warning for
+          agent --trust -p "Read issue.md and analyze every clang-tidy warning for
           false positives. Follow the instructions in AGENTS.md. Write your
           analysis to report.md."
           --model auto
