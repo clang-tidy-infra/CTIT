@@ -64,6 +64,9 @@ jobs:
           git -C llvm-project checkout .
           git -C llvm-project clean -fdx
 
+      - name: Install ctit
+        run: pip install .
+
       - name: Cache test projects
         uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         with:
