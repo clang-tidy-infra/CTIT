@@ -12,6 +12,9 @@ license = {text = "Apache-2.0"}
 authors = [
     {name = "Mitchell", email = "zeyi2@nekoarch.cc"},
 ]
+dependencies = [
+    "argcomplete==3.6.3",
+]
 keywords = [
     "clang-tidy",
     "llvm",

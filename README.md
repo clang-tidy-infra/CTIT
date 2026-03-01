@@ -45,3 +45,35 @@ Based on the admirable work of Yingwei Zheng (dtcxzyw) who kindly shared [their 
 ## TODO
 
 - Add `mp-units`, suggested by @zwuis
+
+## Local development
+
+To install development dependencies run:
+
+```bash
+make activate
+```
+
+### Shell autocomplete
+
+To enable tab completion for the `ctit` command:
+
+**Bash:**
+
+```bash
+echo 'eval "$(register-python-argcomplete ctit)"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+**Zsh:**
+
+```bash
+echo 'eval "$(register-python-argcomplete ctit)"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+**Fish:**
+
+```bash
+register-python-argcomplete --shell fish ctit > ~/.config/fish/completions/ctit.fish
+```

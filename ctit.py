@@ -2,6 +2,7 @@
 """CTIT - Clang Tidy Integration Tester CLI."""
 
 import argparse
+import argcomplete
 import sys
 
 from testers.analyze import analyze, configure
@@ -71,6 +72,7 @@ def main(argv: list[str] | None = None) -> None:
         help=f"Output markdown file (default: {DEFAULT_OUTPUT_FILE})",
     )
 
+    argcomplete.autocomplete(parser)
     args = parser.parse_args(argv)
 
     if args.command is None:
