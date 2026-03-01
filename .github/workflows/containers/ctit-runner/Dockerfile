@@ -11,6 +11,7 @@ RUN apt-get update && \
     python3 \
     python3-dev \
     python-is-python3 \
+    python3-argcomplete \
     python3-yaml \
     zlib1g-dev \
     flex \
