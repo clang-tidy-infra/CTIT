@@ -8,6 +8,7 @@ from testers.analyze import (
     analyze,
     analyze_project,
     build_project,
+    check_clang_compiler,
     configure_cmake,
     configure_project,
     remove_clang_tidy_configs,
@@ -15,6 +16,51 @@ from testers.analyze import (
     get_analysis_configs,
 )
 from testers.config import Project
+
+
+class TestCheckClangCompiler(unittest.TestCase):
+    @patch.dict(os.environ, {"CC": "clang", "CXX": "clang++"})
+    def test_passes_with_clang_env(self):
+        check_clang_compiler()
+
+    @patch.dict(os.environ, {"CC": "clang-21", "CXX": "clang++-21"})
+    def test_passes_with_versioned_clang(self):
+        check_clang_compiler()
+
+    @patch.dict(os.environ, {"CC": "/usr/bin/clang", "CXX": "/usr/bin/clang++"})
+    def test_passes_with_full_path(self):
+        check_clang_compiler()
+
+    @patch.dict(os.environ, {"CC": "gcc", "CXX": "g++"})
+    def test_fails_with_gcc(self):
+        with self.assertRaises(SystemExit) as ctx:
+            check_clang_compiler()
+        self.assertEqual(ctx.exception.code, 1)
+
+    @patch.dict(os.environ, {"CC": "clang", "CXX": "g++"})
+    def test_fails_with_mixed_compilers(self):
+        with self.assertRaises(SystemExit) as ctx:
+            check_clang_compiler()
+        self.assertEqual(ctx.exception.code, 1)
+
+    @patch.dict(os.environ, {}, clear=True)
+    @patch("testers.analyze.shutil.which")
+    def test_falls_back_to_path_lookup(self, mock_which):
+        mock_which.side_effect = lambda name: (
+            "/usr/bin/clang" if "clang" in name else f"/usr/bin/{name}"
+        )
+        # cc/c++ don't contain "clang", so this should fail
+        with self.assertRaises(SystemExit):
+            check_clang_compiler()
+
+    @patch.dict(os.environ, {}, clear=True)
+    @patch("testers.analyze.shutil.which")
+    def test_passes_when_cc_symlinks_to_clang(self, mock_which):
+        # Simulate cc -> /usr/bin/clang-21 (which resolves contain "clang")
+        mock_which.side_effect = lambda name: (
+            "/usr/bin/clang-21" if name == "cc" else "/usr/bin/clang++-21"
+        )
+        check_clang_compiler()
 
 
 class TestRemoveClangTidyConfigs(unittest.TestCase):

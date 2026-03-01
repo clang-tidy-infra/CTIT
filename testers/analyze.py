@@ -57,6 +57,33 @@ def remove_clang_tidy_configs(source_dir: str) -> None:
                 os.remove(os.path.join(root, name))
 
 
+def _resolve_compiler(env_var: str, fallback: str) -> str:
+    """Resolve which compiler CMake would use: env var, then PATH lookup."""
+    return os.environ.get(env_var) or shutil.which(fallback) or fallback
+
+
+def _is_clang(compiler: str) -> bool:
+    """Check if a compiler path/name is clang-based."""
+    return "clang" in os.path.basename(compiler)
+
+
+def check_clang_compiler() -> None:
+    """Verify that the C/C++ compiler is clang-based."""
+    cc = _resolve_compiler("CC", "cc")
+    cxx = _resolve_compiler("CXX", "c++")
+
+    if not _is_clang(cc) or not _is_clang(cxx):
+        print(
+            f"Error: clang compiler required for clang-tidy analysis, current compiler:\n"
+            f"  CC={cc}\n"
+            f"  CXX={cxx}\n"
+            f"Set CC and CXX environment variables to a clang compiler, e.g.:\n"
+            f"  export CC=clang CXX=clang++",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+
 def configure_cmake(source_dir: str, build_dir: str, extra_flags: list[str]) -> None:
     """Run cmake configure with Ninja generator."""
     os.makedirs(build_dir, exist_ok=True)
@@ -155,6 +182,7 @@ def configure(
     config_path: str = CONFIG_FILE,
 ) -> None:
     """Configure all projects (cmake + build targets)."""
+    check_clang_compiler()
     projects = load_projects(config_path)
     configs = get_analysis_configs(config_path)
 
