@@ -1,10 +1,11 @@
 # CTIT as a Public Service
 
-> If you don't know what it is, you probably don't want it...
+**CTIT** (Clang Tidy Integration Tester) runs your clang-tidy check changes against real open-source C/C++ projects. You can use it in two ways:
 
-**CTIT: Clang Tidy Integration Tester**
+- **GitHub service**: Open an issue with a PR URL and check name; the service builds your patch, runs the check on supported projects, and posts the results back to the issue.
+- **Python package**: Install the `ctit` package and use the `ctit` CLI locally to clone projects, configure builds, run analysis, and generate reports.
 
-Based on the admirable work of Yingwei Zheng (dtcxzyw) who kindly shared [their framework for automatic fuzzing](https://github.com/dtcxzyw/llvm-fuzz-service).
+This service is inspired by [Yingwei Zheng (dtcxzyw)'s llvm-fuzz-service](https://github.com/dtcxzyw/llvm-fuzz-service), which provides an automatic workflow for automatic fuzzing of LLVM.
 
 ## How to use
 
@@ -41,10 +42,7 @@ Based on the admirable work of Yingwei Zheng (dtcxzyw) who kindly shared [their 
 - [POCO](https://github.com/pocoproject/poco)
 - [Abseil](https://github.com/abseil/abseil-cpp)
 - [stdexec](https://github.com/NVIDIA/stdexec)
-
-## TODO
-
-- Add `mp-units`, suggested by @zwuis
+- [curl](https://github.com/curl/curl)
 
 ## Local development
 
@@ -77,3 +75,7 @@ source ~/.zshrc
 ```bash
 register-python-argcomplete --shell fish ctit > ~/.config/fish/completions/ctit.fish
 ```
+
+## TODO
+
+- Add `mp-units`, suggested by @zwuis
