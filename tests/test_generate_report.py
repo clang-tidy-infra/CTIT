@@ -176,6 +176,90 @@ class TestParseLogFile(unittest.TestCase):
             self.assertEqual(result.warnings_count, 1)
             self.assertEqual(len(result.issues), 1)
 
+    def test_deduplicates_same_location_and_check(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            log = (
+                "/path/proj/include/header.h:75:9: warning: use scoped_lock [modernize-use-scoped-lock]\n"
+                "75 |         std::lock_guard<std::mutex> lock(m_);\n"
+                "/path/proj/include/header.h:75:9: warning: use scoped_lock [modernize-use-scoped-lock]\n"
+                "75 |         std::lock_guard<std::mutex> lock(m_);\n"
+                "/path/proj/include/header.h:75:9: warning: use scoped_lock [modernize-use-scoped-lock]\n"
+                "75 |         std::lock_guard<std::mutex> lock(m_);\n"
+            )
+            path = self._write_log(tmp_dir, "proj", log)
+            result = parse_log_file(path)
+            self.assertEqual(result.warnings_count, 1)
+            self.assertEqual(len(result.issues), 1)
+
+    def test_different_lines_not_deduplicated(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            log = (
+                "/path/proj/header.h:10:5: warning: msg [check-a]\n"
+                "/path/proj/header.h:20:5: warning: msg [check-a]\n"
+            )
+            path = self._write_log(tmp_dir, "proj", log)
+            result = parse_log_file(path)
+            self.assertEqual(result.warnings_count, 2)
+            self.assertEqual(len(result.issues), 2)
+
+    def test_different_columns_not_deduplicated(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            log = (
+                "/path/proj/header.h:10:5: warning: msg [check-a]\n"
+                "/path/proj/header.h:10:9: warning: msg [check-a]\n"
+            )
+            path = self._write_log(tmp_dir, "proj", log)
+            result = parse_log_file(path)
+            self.assertEqual(result.warnings_count, 2)
+            self.assertEqual(len(result.issues), 2)
+
+    def test_different_checks_same_location_not_deduplicated(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            log = (
+                "/path/proj/file.cpp:10:5: warning: msg1 [check-a]\n"
+                "/path/proj/file.cpp:10:5: warning: msg2 [check-b]\n"
+            )
+            path = self._write_log(tmp_dir, "proj", log)
+            result = parse_log_file(path)
+            self.assertEqual(result.warnings_count, 2)
+            self.assertEqual(len(result.issues), 2)
+
+    def test_different_files_same_line_not_deduplicated(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            log = (
+                "/path/proj/a.h:10:5: warning: msg [check-a]\n"
+                "/path/proj/b.h:10:5: warning: msg [check-a]\n"
+            )
+            path = self._write_log(tmp_dir, "proj", log)
+            result = parse_log_file(path)
+            self.assertEqual(result.warnings_count, 2)
+            self.assertEqual(len(result.issues), 2)
+
+    def test_dedup_keeps_first_occurrence_context(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            log = (
+                "/path/proj/header.h:10:5: warning: msg [check-a]\n"
+                "10 |     int x = 0;\n"
+                "/path/proj/header.h:10:5: warning: msg [check-a]\n"
+                "10 |     int x = 0;\n"
+            )
+            path = self._write_log(tmp_dir, "proj", log)
+            result = parse_log_file(path)
+            self.assertEqual(len(result.issues), 1)
+            self.assertEqual(result.issues[0].context, "10 |     int x = 0;")
+
+    def test_dedup_mixed_warning_and_error_same_location(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            log = (
+                "/path/proj/file.cpp:10:5: warning: msg [check-a]\n"
+                "/path/proj/file.cpp:10:5: error: msg [check-a]\n"
+            )
+            path = self._write_log(tmp_dir, "proj", log)
+            result = parse_log_file(path)
+            # Same file/line/col/check — first one wins
+            self.assertEqual(len(result.issues), 1)
+            self.assertEqual(result.issues[0].severity, "warning")
+
 
 class TestWriteSummaryTable(unittest.TestCase):
     def test_single_project_pass(self):
