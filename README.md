@@ -35,9 +35,13 @@ Based on the admirable work of Yingwei Zheng (dtcxzyw) who kindly shared [their 
 
 ## Projects
 
-- cpp: [Cppcheck](https://github.com/danmar/cppcheck), [Clang](https://github.com/llvm/llvm-project)
+- [Cppcheck](https://github.com/danmar/cppcheck)
+- [LLVM/Clang](https://github.com/llvm/llvm-project)
+- [Doxygen](https://github.com/doxygen/doxygen)
+- [POCO](https://github.com/pocoproject/poco)
+- [Abseil](https://github.com/abseil/abseil-cpp)
+- [stdexec](https://github.com/NVIDIA/stdexec)
 
 ## TODO
 
-- Add `stdexec`, suggested by @zwuis
 - Add `mp-units`, suggested by @zwuis
