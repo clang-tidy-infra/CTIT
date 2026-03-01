@@ -2,8 +2,8 @@ FROM docker.io/library/ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && \
-    apt-get install -y \
+RUN apt update && \
+    apt install -y \
     cmake \
     ninja-build \
     build-essential \
@@ -36,11 +36,11 @@ RUN apt-get update && \
     lsb-release \
     gnupg \
     software-properties-common && \
-    apt-get clean && \
+    apt clean && \
     rm -rf /var/lib/apt/lists/*
 
 RUN wget -qO- https://apt.llvm.org/llvm.sh | bash -s -- 21 && \
-    apt-get clean && \
+    apt clean && \
     rm -rf /var/lib/apt/lists/*
 
 ENV CC=clang-21
