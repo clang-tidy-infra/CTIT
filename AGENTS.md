@@ -36,7 +36,10 @@ For a check named `<module>-<rest>` (e.g. `bugprone-argument-comment`):
 
 ## Analysis Procedure
 
-Process **every** warning in `issue.md`, in the order they appear:
+Process warnings in `issue.md` in the order they appear.
+If a warning is **substantially identical** to one already analyzed (same check,
+same code pattern, same verdict), you may skip it and note "same as #N" in the
+table instead of repeating the full analysis.
 
 1. **Read the warning** - note the project, file, line, message, and check name.
 2. **Read the source code** - open the file and read ±30 lines around the
@@ -56,14 +59,11 @@ Process **every** warning in `issue.md`, in the order they appear:
 
 ## Output Format
 
-Append your analysis to the **end** of `issue.md`.
-Do **NOT** modify anything that already exists in the file.
+Write your analysis to `report.md`.
+Do **NOT** modify `issue.md`.
 Use exactly this format:
 
 ```markdown
-
----
-
 ### 🤖 AI FP Analysis
 
 | # | Project | File | Line | Verdict | Rationale |
@@ -78,7 +78,6 @@ Use exactly this format:
 
 - Process warnings **sequentially** in the order they appear.
 - If a project section shows **CRASH** with no warnings, skip it.
-- If `issue.md` contains **no warnings**, append only:
+- If `issue.md` contains **no warnings**, write only:
   `No warnings to analyze.`
 - Be **conservative** - only mark FP when you are confident the warning is wrong.
-- Never remove or rewrite existing content in `issue.md`.

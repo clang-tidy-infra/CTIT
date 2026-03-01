@@ -12,6 +12,10 @@ on:
       extra_config:
         description: 'Check options (e.g. VariableCase: camelBack)'
         required: false
+      skip_ai_analysis:
+        description: 'Skip the AI false-positive analysis step'
+        type: boolean
+        default: false
   issues:
     types: labeled
 
@@ -118,14 +122,15 @@ jobs:
           echo "$HOME/.cursor/bin" >> $GITHUB_PATH
 
       - name: Analyze False Positives
+        if: inputs.skip_ai_analysis != true
         continue-on-error: true
         timeout-minutes: 30
         env:
           CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
         run: >
           agent -p "Read issue.md and analyze every clang-tidy warning for
-          false positives. Follow the instructions in AGENTS.md. Append your
-          analysis table to the end of issue.md."
+          false positives. Follow the instructions in AGENTS.md. Write your
+          analysis to report.md."
           --model gpt-5.2
 
       - name: Artifacts
@@ -136,6 +141,7 @@ jobs:
           path: |
             logs/
             issue.md
+            report.md
 
       - name: Report
         if: github.event_name != 'workflow_dispatch'
