@@ -12,6 +12,10 @@ on:
       extra_config:
         description: 'Check options (e.g. VariableCase: camelBack)'
         required: false
+      skip_ai_analysis:
+        description: 'Skip the AI false-positive analysis step'
+        type: boolean
+        default: false
   issues:
     types: labeled
 
@@ -112,6 +116,23 @@ jobs:
         run: |
           ./ctit.py report
 
+      - name: Install Cursor CLI
+        run: |
+          curl https://cursor.com/install -fsS | bash
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Analyze False Positives
+        if: inputs.skip_ai_analysis != true
+        continue-on-error: true
+        timeout-minutes: 30
+        env:
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+        run: >
+          agent --trust -p "Read issue.md and analyze every clang-tidy warning for
+          false positives. Follow the instructions in AGENTS.md. Write your
+          analysis to report.md."
+          --model auto
+
       - name: Artifacts
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         id: artifact
@@ -120,6 +141,7 @@ jobs:
           path: |
             logs/
             issue.md
+            report.md
 
       - name: Report
         if: github.event_name != 'workflow_dispatch'
