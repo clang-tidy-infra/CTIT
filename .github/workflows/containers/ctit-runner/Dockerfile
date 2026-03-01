@@ -24,6 +24,9 @@ RUN apt-get update && \
     libflac-dev \
     libogg-dev \
     libvorbis-dev \
+    libpsl-dev \
+    libidn2-dev \
+    libldap2-dev \
     sccache \
     zip \
     unzip \
