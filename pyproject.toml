@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools==82.0.0", "wheel==0.46.3"]
+requires = ["setuptools==82.0.1", "wheel==0.46.3"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -48,13 +48,13 @@ Issues = "https://github.com/clang-tidy-infra/CTIT/issues"
 
 [project.optional-dependencies]
 dev = [
-    "black==26.1.0",
+    "black==26.3.0",
     "shellcheck-py==0.11.0.1",
     "validate-pyproject[all]==0.25",
     "yamllint==1.38.0",
-    "ruff==0.15.4",
+    "ruff==0.15.5",
     "mypy==1.19.1",
-    "zizmor==1.22.0",
+    "zizmor==1.23.1",
 ]
 
 [tool.setuptools]
