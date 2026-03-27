@@ -3,3 +3,7 @@ rules:
     ignore:
       - check-tester.yaml
       - build-ctit-container.yaml
+  secrets-outside-env:
+    ignore:
+      - check-tester.yaml
+      - update-llvm.yaml
