@@ -52,8 +52,8 @@ dev = [
     "shellcheck-py==0.11.0.1",
     "validate-pyproject[all]==0.25",
     "yamllint==1.38.0",
-    "ruff==0.15.8",
-    "mypy==1.19.1",
+    "ruff==0.15.9",
+    "mypy==1.20.0",
     "zizmor==1.23.1",
 ]
 
