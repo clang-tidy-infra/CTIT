@@ -18,12 +18,24 @@ on:
         default: false
   issues:
     types: labeled
+  issue_comment:
+    types: [created]
 
 permissions: {}
 
 jobs:
   determine-runner:
-    if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'cpp' || github.event.label.name == 'c'
+    if: >
+      github.event_name == 'workflow_dispatch'
+      || (github.event_name == 'issues'
+          && (github.event.label.name == 'cpp' || github.event.label.name == 'c'))
+      || (github.event_name == 'issue_comment'
+          && github.event.issue.pull_request == null
+          && contains(github.event.comment.body, '/redo')
+          && (contains(github.event.issue.labels.*.name, 'cpp')
+              || contains(github.event.issue.labels.*.name, 'c'))
+          && (github.event.comment.author_association == 'OWNER'
+              || github.event.comment.author_association == 'MEMBER'))
     runs-on: ubuntu-latest
     timeout-minutes: 1
     outputs:
@@ -54,6 +66,20 @@ jobs:
       SCCACHE_GHA_ENABLED: "true"
 
     steps:
+      - name: Acknowledge /redo trigger
+        if: github.event_name == 'issue_comment'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMENT_ID: ${{ github.event.comment.id }}
+          REPO: ${{ github.repository }}
+        run: |
+          curl -sS -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/$REPO/issues/comments/$COMMENT_ID/reactions" \
+            -d '{"content":"eyes"}'
+
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           submodules: true
