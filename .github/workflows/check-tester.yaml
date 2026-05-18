@@ -171,6 +171,17 @@ jobs:
             issue.md
             report.md
 
+      - name: Append FP analysis to comment
+        if: github.event_name != 'workflow_dispatch'
+        run: |
+          if [ -f report.md ]; then
+            {
+              printf '\n<details>\n<summary><b>AI False-Positive Analysis</b> (click to expand)</summary>\n\n'
+              cat report.md
+              printf '\n</details>\n'
+            } >> issue.md
+          fi
+
       - name: Report
         if: github.event_name != 'workflow_dispatch'
         uses: thollander/actions-comment-pull-request@24bffb9b452ba05a4f3f77933840a6a841d1b32b # v3.0.1
