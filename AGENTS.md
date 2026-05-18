@@ -36,48 +36,43 @@ For a check named `<module>-<rest>` (e.g. `bugprone-argument-comment`):
 
 ## Analysis Procedure
 
-Process warnings in `issue.md` in the order they appear.
-If a warning is **substantially identical** to one already analyzed (same check,
-same code pattern, same verdict), you may skip it and note "same as #N" in the
-table instead of repeating the full analysis.
+The file `report.md` already exists as a **pre-filled table with one row per
+warning**, in the same order as `issue.md`. Your job is to **edit it in place**:
+replace the `TBD` cells in the `Verdict` and `Rationale` columns, then update
+the `**Summary**` line counts at the bottom.
 
-1. **Read the warning** - note the project, file, line, message, and check name.
-2. **Read the source code** - open the file and read ±30 lines around the
-   flagged line to understand intent and surrounding context.
+Process rows top-to-bottom. For each row:
+
+1. **Read the warning** - the `Location` column links to the exact file:line in
+   the project's source. The `Check` column is the clang-tidy check name.
+2. **Read the source code** - open the linked file and read ±30 lines around
+   the flagged line to understand intent and surrounding context.
 3. **Read the check documentation** - understand what the check is designed to
    detect and any documented limitations.
 4. **Read the check implementation** (when the doc alone is insufficient) —
    look at matcher logic and diagnostic conditions to understand edge cases.
-5. **Render a verdict**:
+5. **Render a verdict** by replacing the `TBD` in the `Verdict` column with one of:
    - **TP** - the warning correctly identifies a real defect, code smell, or
      deviation from the check's documented rule.
    - **FP** - the warning is incorrect; the flagged code is valid, intentional,
      or the check misfires due to an edge case (e.g. macros, templates,
      platform-specific code, intentional patterns).
    - **Uncertain** - you lack enough context to decide confidently.
-6. **Write a rationale** - 1–3 sentences explaining your reasoning.
+6. **Write a rationale** by replacing the `TBD` in the `Rationale` column with
+   1–3 sentences explaining your reasoning. If a row is **substantially identical**
+   to a previously analyzed row (same check, same code pattern, same verdict),
+   you may write `Same as #N` instead of repeating the full rationale.
 
-## Output Format
+When all rows are filled, replace the three `TBD` counts in the
+`**Summary**: TBD True Positives, TBD False Positives, TBD Uncertain ...` line.
 
-Write your analysis to `report.md`.
-Do **NOT** modify `issue.md`.
-Use exactly this format:
+## Hard Rules
 
-```markdown
-### 🤖 AI FP Analysis
-
-| # | Project | File | Line | Verdict | Rationale |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| 1 | project | path/to/file.cpp | 42 | TP | Brief explanation |
-| 2 | project | path/to/other.cpp | 17 | FP | Brief explanation |
-
-**Summary**: X True Positives, Y False Positives, Z Uncertain out of N total warnings.
-```
-
-## Rules
-
-- Process warnings **sequentially** in the order they appear.
-- If a project section shows **CRASH** with no warnings, skip it.
-- If `issue.md` contains **no warnings**, write only:
-  `No warnings to analyze.`
+- **Edit `report.md` in place.** Do NOT rewrite the file from scratch.
+- Do **NOT** add, remove, or reorder rows.
+- Do **NOT** modify columns 1–4 (`#`, `Project`, `Location`, `Check`) — the
+  links are pre-rendered for the final issue comment.
+- Do **NOT** modify `issue.md`.
+- If `report.md` contains the line `_No warnings to analyze._`, leave it as-is
+  and stop.
 - Be **conservative** - only mark FP when you are confident the warning is wrong.

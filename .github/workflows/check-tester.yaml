@@ -156,10 +156,12 @@ jobs:
         timeout-minutes: 30
         env:
           CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
-        run: >
-          agent --trust -p "Read issue.md and analyze every clang-tidy warning for
-          false positives. Follow the instructions in AGENTS.md. Write your
-          analysis to report.md."
+        run: |
+          ./ctit.py report-template
+          agent --trust -p "report.md is a pre-filled table with one row per \
+          clang-tidy warning. Edit it in place: replace the TBD cells in the \
+          Verdict and Rationale columns and update the Summary line. Do not \
+          touch columns 1-4 and do not add or remove rows. Follow AGENTS.md." \
           --model auto
 
       - name: Upload logs and reports

@@ -218,19 +218,51 @@ def write_project_details(
     f.write("\n</details>\n")
 
 
+def write_ai_report_template(
+    f: TextIO,
+    results: list[ProjectResult],
+    project_urls: dict[str, str],
+) -> None:
+    """Writes a pre-filled FP-analysis table for the AI to complete in place.
+
+    One row per warning; the AI replaces the TBD cells in Verdict and Rationale
+    and the TBD counts in the Summary line. Other columns must stay untouched.
+    """
+    f.write("### AI FP Analysis\n\n")
+    f.write("| # | Project | Location | Check | Verdict | Rationale |\n")
+    f.write("| :--- | :--- | :--- | :--- | :--- | :--- |\n")
+
+    n = 0
+    for res in results:
+        base_url = project_urls.get(res.name)
+        for issue in res.issues:
+            n += 1
+            if base_url:
+                link = f"{base_url}/{issue.file_path}#L{issue.line}"
+                loc_text = f"[{issue.file_path}:{issue.line}]({link})"
+            else:
+                loc_text = f"{issue.file_path}:{issue.line}"
+            f.write(
+                f"| {n} | {res.name} | {loc_text} "
+                f"| `{issue.check_name}` | TBD | TBD |\n"
+            )
+
+    if n == 0:
+        f.write("\n_No warnings to analyze._\n")
+        return
+
+    f.write(
+        f"\n**Summary**: TBD True Positives, TBD False Positives, "
+        f"TBD Uncertain out of {n} total warnings.\n"
+    )
+
+
 def generate_markdown(
     results: list[ProjectResult],
     output_path: str,
     project_urls: dict[str, str] | None = None,
 ) -> None:
-    """
-    Orchestrates the creation of the markdown report.
-
-    Args:
-        results: List of parsed project results.
-        output_path: Destination path for the report.
-        project_urls: Mapping of project names to browse URLs.
-    """
+    """Writes the human-facing warnings report (issue.md)."""
     if project_urls is None:
         project_urls = {}
 
@@ -244,7 +276,7 @@ def generate_markdown(
         print(f"Error writing report to {output_path}: {e}", file=sys.stderr)
 
 
-def generate_report(log_dir: str, output: str) -> None:
+def _load_results(log_dir: str) -> tuple[list[ProjectResult], dict[str, str]]:
     if not os.path.exists(log_dir):
         print(f"Log directory '{log_dir}' not found.", file=sys.stderr)
         sys.exit(1)
@@ -260,7 +292,22 @@ def generate_report(log_dir: str, output: str) -> None:
     except (OSError, KeyError):
         project_urls = {}
 
-    all_results = [parse_log_file(log) for log in log_files]
-    all_results.sort(key=lambda x: x.name)
+    results = [parse_log_file(log) for log in log_files]
+    results.sort(key=lambda x: x.name)
+    return results, project_urls
 
-    generate_markdown(all_results, output, project_urls)
+
+def generate_report(log_dir: str, output: str) -> None:
+    results, project_urls = _load_results(log_dir)
+    generate_markdown(results, output, project_urls)
+
+
+def generate_template(log_dir: str, output: str) -> None:
+    """Writes the pre-filled FP-analysis template for the AI to complete."""
+    results, project_urls = _load_results(log_dir)
+    try:
+        with open(output, "w") as f:
+            write_ai_report_template(f, results, project_urls)
+        print(f"FP-analysis template generated: {output}")
+    except OSError as e:
+        print(f"Error writing template to {output}: {e}", file=sys.stderr)

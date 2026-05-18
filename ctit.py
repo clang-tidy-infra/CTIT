@@ -8,7 +8,11 @@ import sys
 from testers.analyze import DEFAULT_CLANG_TIDY_BIN, DEFAULT_LOG_DIR, analyze, configure
 from testers.clone_projects import clone_projects
 from testers.config import CONFIG_FILE, PROJECTS_DIR
-from testers.generate_report import DEFAULT_OUTPUT_FILE, generate_report
+from testers.generate_report import (
+    DEFAULT_OUTPUT_FILE,
+    generate_report,
+    generate_template,
+)
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -103,6 +107,21 @@ def main(argv: list[str] | None = None) -> None:
         help=f"Output markdown file (default: {DEFAULT_OUTPUT_FILE})",
     )
 
+    report_template_parser = subparsers.add_parser(
+        "report-template",
+        help="Generate the pre-filled FP-analysis template (report.md) for the AI to complete",
+    )
+    report_template_parser.add_argument(
+        "--log-dir",
+        default=DEFAULT_LOG_DIR,
+        help=f"Directory containing log files (default: {DEFAULT_LOG_DIR})",
+    )
+    report_template_parser.add_argument(
+        "--output",
+        default="report.md",
+        help="Output template file (default: report.md)",
+    )
+
     argcomplete.autocomplete(parser)
     args = parser.parse_args(argv)
 
@@ -125,6 +144,8 @@ def main(argv: list[str] | None = None) -> None:
         )
     elif args.command == "report":
         generate_report(log_dir=args.log_dir, output=args.output)
+    elif args.command == "report-template":
+        generate_template(log_dir=args.log_dir, output=args.output)
 
 
 if __name__ == "__main__":
