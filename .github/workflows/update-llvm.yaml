@@ -77,13 +77,14 @@ jobs:
       SCCACHE_GHA_ENABLED: "true"
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Checkout CTIT
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           submodules: true
           fetch-depth: 1
           persist-credentials: false
 
-      - name: Set up Git
+      - name: Prepare LLVM submodule
         run: |
           git config --global --add safe.directory '*'
           git config user.name "github-actions[bot]"
@@ -94,5 +95,5 @@ jobs:
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@9e7fa8a12102821edf02ca5dbea1acd0f89a2696 # v0.0.10
 
-      - name: Build Clang-tidy
+      - name: Warmup clang-tidy
         run: bash build.sh
