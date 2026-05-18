@@ -80,13 +80,14 @@ jobs:
             "https://api.github.com/repos/$REPO/issues/comments/$COMMENT_ID/reactions" \
             -d '{"content":"eyes"}'
 
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Checkout CTIT
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           submodules: true
           fetch-depth: 1
           persist-credentials: false
 
-      - name: Set up Git
+      - name: Prepare LLVM submodule
         run: |
           git config --global --add safe.directory '*'
           git config user.name "github-actions[bot]"
@@ -94,7 +95,7 @@ jobs:
           git -C llvm-project checkout .
           git -C llvm-project clean -fdx
 
-      - name: Cache test projects
+      - name: Restore test-projects cache
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: test_projects
@@ -103,7 +104,7 @@ jobs:
       - name: Clone test projects
         run: ./ctit.py clone --work-dir test_projects
 
-      - name: Parse Inputs
+      - name: Extract analysis inputs from issue body
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             {
@@ -118,7 +119,7 @@ jobs:
           echo "CHECK_NAME: $CHECK_NAME"
           echo "TIDY_CONFIG: $TIDY_CONFIG"
 
-      - name: Set up patch
+      - name: Apply LLVM PR patch
         run: bash apply_patch.sh
         env:
           GITHUB_PATCH_ID: ${{ env.PR_LINK }}
@@ -126,13 +127,13 @@ jobs:
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@9e7fa8a12102821edf02ca5dbea1acd0f89a2696 # v0.0.10
 
-      - name: Build Clang-tidy
+      - name: Build patched clang-tidy
         run: bash build.sh
 
       - name: Configure test projects
         run: ./ctit.py configure
 
-      - name: Run Analysis
+      - name: Run clang-tidy on test projects
         run: >
           ./ctit.py analyze
           --check-name "${{ env.CHECK_NAME }}"
@@ -140,7 +141,7 @@ jobs:
           --run-tidy-script llvm-project/clang-tools-extra/clang-tidy/tool/run-clang-tidy.py
           ${{ env.TIDY_CONFIG && format('--tidy-config "{0}"', env.TIDY_CONFIG) || '' }}
 
-      - name: Generate Report
+      - name: Generate warnings report
         run: |
           ./ctit.py report
 
@@ -149,7 +150,7 @@ jobs:
           curl https://cursor.com/install -fsS | bash
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
-      - name: Analyze False Positives
+      - name: Analyze false positives with Cursor agent
         if: inputs.skip_ai_analysis != true
         continue-on-error: true
         timeout-minutes: 30
@@ -161,7 +162,7 @@ jobs:
           analysis to report.md."
           --model auto
 
-      - name: Artifacts
+      - name: Upload logs and reports
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         id: artifact
         with:
@@ -171,7 +172,7 @@ jobs:
             issue.md
             report.md
 
-      - name: Append FP analysis to comment
+      - name: Append AI analysis to issue.md
         if: github.event_name != 'workflow_dispatch'
         run: |
           if [ -f report.md ]; then
@@ -182,7 +183,7 @@ jobs:
             } >> issue.md
           fi
 
-      - name: Report
+      - name: Comment results on issue
         if: github.event_name != 'workflow_dispatch'
         uses: thollander/actions-comment-pull-request@24bffb9b452ba05a4f3f77933840a6a841d1b32b # v3.0.1
         with:
