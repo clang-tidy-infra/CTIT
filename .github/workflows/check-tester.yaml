@@ -49,7 +49,7 @@ jobs:
           fallback-runner: "ubuntu-latest"
           github-token: ${{ secrets.RUNNER_ACCESS_TOKEN }}
 
-  build:
+  run-analysis:
     needs: determine-runner
     runs-on: ${{ fromJson(needs.determine-runner.outputs.runner) }}
     container: 
