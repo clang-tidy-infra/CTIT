@@ -159,7 +159,7 @@ def parse_log_file(log_path: str) -> ProjectResult:
 
 def write_summary_table(f: TextIO, results: list[ProjectResult]) -> None:
     """Writes the high-level summary table to the markdown file."""
-    f.write("### 🧪 Clang-Tidy Integration Test Results\n\n")
+    f.write("### Clang-Tidy Integration Test Results\n\n")
     f.write("| Project | Status | Warnings | Errors | Crash |\n")
     f.write("| :--- | :--- | :--- | :--- | :--- |\n")
 
@@ -182,7 +182,7 @@ def write_project_details(
     if not result.issues and not result.has_crash:
         return
 
-    summary_text = f"🔍 {result.name} Details ({result.warnings_count} warnings, {result.errors_count} errors)"
+    summary_text = f"{result.name} Details ({result.warnings_count} warnings, {result.errors_count} errors)"
     f.write(f"\n<details>\n<summary><strong>{summary_text}</strong></summary>\n\n")
 
     if result.has_crash:
@@ -196,7 +196,7 @@ def write_project_details(
     base_url = project_urls.get(result.name)
 
     for file_path, issues in files_dict.items():
-        f.write(f"#### 📄 `{file_path}`\n")
+        f.write(f"#### `{file_path}`\n")
 
         for issue in issues:
             # Create link if base URL is available
