@@ -378,10 +378,10 @@ class TestWriteProjectDetails(unittest.TestCase):
         result = ProjectResult(name="unknown", warnings_count=1, issues=[issue])
         write_project_details(f, result, {})
         output = f.getvalue()
-        self.assertIn("1:1", output)
+        self.assertIn("file.cpp:1", output)
         self.assertNotIn("https://", output)
 
-    def test_groups_issues_by_file(self):
+    def test_issues_in_order(self):
         f = io.StringIO()
         issues = [
             Issue("a.cpp", 1, 1, "warning", "m1", "c1"),
@@ -391,7 +391,9 @@ class TestWriteProjectDetails(unittest.TestCase):
         result = ProjectResult(name="proj", warnings_count=3, issues=issues)
         write_project_details(f, result, {})
         output = f.getvalue()
-        self.assertLess(output.index("`a.cpp`"), output.index("`b.cpp`"))
+        self.assertIn("a.cpp:1", output)
+        self.assertIn("b.cpp:2", output)
+        self.assertIn("a.cpp:3", output)
 
 
 class TestGenerateMarkdown(unittest.TestCase):
