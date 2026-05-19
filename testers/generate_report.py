@@ -188,32 +188,22 @@ def write_project_details(
     if result.has_crash:
         f.write("🚨 **CRASH DETECTED** in this project!\n\n")
 
-    # Group issues by file
-    files_dict: dict[str, list[Issue]] = {}
-    for issue in result.issues:
-        files_dict.setdefault(issue.file_path, []).append(issue)
-
     base_url = project_urls.get(result.name)
 
-    for file_path, issues in files_dict.items():
-        f.write(f"#### `{file_path}`\n")
+    for issue in result.issues:
+        if base_url:
+            link = f"{base_url}/{issue.file_path}#L{issue.line}"
+            loc_text = f"[{issue.file_path}:{issue.line}]({link})"
+        else:
+            loc_text = f"{issue.file_path}:{issue.line}"
 
-        for issue in issues:
-            # Create link if base URL is available
-            if base_url:
-                link = f"{base_url}/{file_path}#L{issue.line}"
-                loc_text = f"[{issue.line}:{issue.col}]({link})"
-            else:
-                loc_text = f"{issue.line}:{issue.col}"
+        icon = "🛑" if issue.severity == "error" else "⚠️"
 
-            icon = "🛑" if issue.severity == "error" else "⚠️"
+        f.write(f"#### {icon} {loc_text}\n")
+        f.write(f"{issue.message} `[{issue.check_name}]`\n")
 
-            f.write(
-                f"- {icon} **{loc_text}**: {issue.message} `[{issue.check_name}]`\n"
-            )
-
-            if issue.context:
-                f.write(f"  ```cpp\n  {issue.context}\n  ```\n")
+        if issue.context:
+            f.write(f"  ```cpp\n  {issue.context}\n  ```\n")
 
     f.write("\n</details>\n")
 
