@@ -76,6 +76,21 @@ source ~/.zshrc
 register-python-argcomplete --shell fish ctit > ~/.config/fish/completions/ctit.fish
 ```
 
+### Running clang test inputs
+
+After building `clang-tidy`, you can smoke-test a check against LLVM's own clang
+test inputs:
+
+```bash
+./ctit.py clang-tests \
+  --check-name bugprone-argument-comment \
+  --clang-tidy-binary llvm-project/build/bin/clang-tidy \
+  --llvm-dir llvm-project
+```
+
+The command writes `clang-tests.md` with crash-only results and per-file logs
+under `logs/clang-tests/`.
+
 ## TODO
 
 - Add `mp-units`, suggested by @zwuis
