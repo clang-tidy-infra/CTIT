@@ -48,13 +48,13 @@ Issues = "https://github.com/clang-tidy-infra/CTIT/issues"
 
 [project.optional-dependencies]
 dev = [
-    "black==26.3.1",
+    "black==26.5.1",
     "shellcheck-py==0.11.0.1",
     "validate-pyproject[all]==0.25",
     "yamllint==1.38.0",
-    "ruff==0.15.12",
+    "ruff==0.15.13",
     "mypy==2.1.0",
-    "zizmor==1.24.1",
+    "zizmor==1.25.2",
 ]
 
 [tool.setuptools]
