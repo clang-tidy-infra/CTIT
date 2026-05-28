@@ -219,8 +219,8 @@ def write_ai_report_template(
     and the TBD counts in the Summary line. Other columns must stay untouched.
     """
     f.write("### AI FP Analysis\n\n")
-    f.write("| # | Project | Location | Check | Verdict | Rationale |\n")
-    f.write("| :--- | :--- | :--- | :--- | :--- | :--- |\n")
+    f.write("| # | Project | Verdict | Rationale | Location |\n")
+    f.write("| :--- | :--- | :--- | :--- | :--- |\n")
 
     n = 0
     for res in results:
@@ -232,10 +232,7 @@ def write_ai_report_template(
                 loc_text = f"[{issue.file_path}:{issue.line}]({link})"
             else:
                 loc_text = f"{issue.file_path}:{issue.line}"
-            f.write(
-                f"| {n} | {res.name} | {loc_text} "
-                f"| `{issue.check_name}` | TBD | TBD |\n"
-            )
+            f.write(f"| {n} | {res.name} | TBD | TBD | {loc_text} |\n")
 
     if n == 0:
         f.write("\n_No warnings to analyze._\n")
