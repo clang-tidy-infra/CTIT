@@ -195,8 +195,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
         run: |
-          gh api --method PATCH repos/$REPO/issues/comments/$REPORT_COMMENT_ID \
-            -f body="$(cat issue.md)"
+          python3 -c "import json; print(json.dumps({'body': open('issue.md').read()}))" | \
+            gh api --method PATCH repos/$REPO/issues/comments/$REPORT_COMMENT_ID --input -
 
       - name: Update comment on job failure
         if: (failure() || cancelled()) && github.event_name != 'workflow_dispatch'
