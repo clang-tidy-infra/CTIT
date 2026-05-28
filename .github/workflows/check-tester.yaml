@@ -185,6 +185,10 @@ jobs:
             } >> issue.md
           fi
 
+      - name: Slim issue.md for comment
+        if: github.event_name != 'workflow_dispatch'
+        run: python3 slim_comment.py issue.md "${{ steps.artifact.outputs.artifact-url }}"
+
       - name: Comment results on issue
         if: github.event_name != 'workflow_dispatch'
         uses: thollander/actions-comment-pull-request@24bffb9b452ba05a4f3f77933840a6a841d1b32b # v3.0.1
