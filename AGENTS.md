@@ -44,7 +44,7 @@ the `**Summary**` line counts at the bottom.
 Process rows top-to-bottom. For each row:
 
 1. **Read the warning** - the `Location` column links to the exact file:line in
-   the project's source. The `Check` column is the clang-tidy check name.
+   the project's source.
 2. **Read the source code** - open the linked file and read ±30 lines around
    the flagged line to understand intent and surrounding context.
 3. **Read the check documentation** - understand what the check is designed to
@@ -70,7 +70,7 @@ When all rows are filled, replace the three `TBD` counts in the
 
 - **Edit `report.md` in place.** Do NOT rewrite the file from scratch.
 - Do **NOT** add, remove, or reorder rows.
-- Do **NOT** modify columns 1–4 (`#`, `Project`, `Location`, `Check`) — the
+- Do **NOT** modify columns 1–2 (`#`, `Project`) or column 5 (`Location`) — the
   links are pre-rendered for the final issue comment.
 - Do **NOT** modify `issue.md`.
 - If `report.md` contains the line `_No warnings to analyze._`, leave it as-is

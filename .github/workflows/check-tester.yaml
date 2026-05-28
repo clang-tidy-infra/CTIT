@@ -161,7 +161,7 @@ jobs:
           agent --trust -p "report.md is a pre-filled table with one row per \
           clang-tidy warning. Edit it in place: replace the TBD cells in the \
           Verdict and Rationale columns and update the Summary line. Do not \
-          touch columns 1-4 and do not add or remove rows. Follow AGENTS.md." \
+          touch columns 1-2 and 5 and do not add or remove rows. Follow AGENTS.md." \
           --model auto
 
       - name: Upload logs and reports
