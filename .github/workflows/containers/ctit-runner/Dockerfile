@@ -34,6 +34,7 @@ RUN apt-get update && \
     unzip \
     wget \
     git \
+    gh \
     ca-certificates \
     lsb-release \
     gnupg \

@@ -77,20 +77,11 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
         run: |
           if [ "$EVENT_NAME" = "issue_comment" ]; then
-            curl -sS -X POST \
-              -H "Authorization: Bearer $GH_TOKEN" \
-              -H "Accept: application/vnd.github+json" \
-              -H "X-GitHub-Api-Version: 2022-11-28" \
-              "https://api.github.com/repos/$REPO/issues/comments/$COMMENT_ID/reactions" \
-              -d '{"content":"eyes"}'
+            gh api repos/$REPO/issues/comments/$COMMENT_ID/reactions -f content="eyes"
           fi
-          REPORT_COMMENT_ID=$(curl -sS -X POST \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            "https://api.github.com/repos/$REPO/issues/$ISSUE_NUMBER/comments" \
-            -d "{\"body\":\"Run started: https://github.com/$REPO/actions/runs/$RUN_ID\"}" \
-            | jq -r '.id')
+          REPORT_COMMENT_ID=$(gh api repos/$REPO/issues/$ISSUE_NUMBER/comments \
+            -f body="Run started: https://github.com/$REPO/actions/runs/$RUN_ID" \
+            --jq '.id')
           echo "REPORT_COMMENT_ID=$REPORT_COMMENT_ID" >> "$GITHUB_ENV"
 
       - name: Checkout CTIT
@@ -204,12 +195,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
         run: |
-          curl -sS -X PATCH \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            "https://api.github.com/repos/$REPO/issues/comments/$REPORT_COMMENT_ID" \
-            --data-binary "{\"body\": $(jq -Rs . < issue.md)}"
+          gh api --method PATCH repos/$REPO/issues/comments/$REPORT_COMMENT_ID \
+            -f body="$(cat issue.md)"
 
       - name: Update comment on job failure
         if: (failure() || cancelled()) && github.event_name != 'workflow_dispatch'
@@ -225,9 +212,5 @@ jobs:
           else
             BODY="Run failed: https://github.com/$REPO/actions/runs/$RUN_ID (cc @$ACTOR)"
           fi
-          curl -sS -X PATCH \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            "https://api.github.com/repos/$REPO/issues/comments/$REPORT_COMMENT_ID" \
-            -d "{\"body\":\"$BODY\"}"
+          gh api --method PATCH repos/$REPO/issues/comments/$REPORT_COMMENT_ID \
+            -f body="$BODY"
