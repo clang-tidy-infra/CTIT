@@ -189,6 +189,10 @@ jobs:
             } >> issue.md
           fi
 
+      - name: Slim issue.md for comment
+        if: github.event_name != 'workflow_dispatch'
+        run: python3 slim_comment.py issue.md "${{ steps.artifact.outputs.artifact-url }}"
+
       - name: Comment results on issue
         if: github.event_name != 'workflow_dispatch'
         env:
