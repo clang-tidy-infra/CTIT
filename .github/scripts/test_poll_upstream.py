@@ -66,6 +66,11 @@ class TestLooksLikeNewCheck(unittest.TestCase):
             )
         )
 
+    def test_rejects_missing_clang_tidy_prefix(self):
+        # Without the [clang-tidy] prefix the title is rejected even if it
+        # contains both "add" and "check".
+        self.assertFalse(looks_like_new_check("Add readability-foo check"))
+
 
 class TestDetectCheck(unittest.TestCase):
     def test_source_files_drive_name(self):

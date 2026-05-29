@@ -30,7 +30,8 @@ def issue_already_exists(repo: str, pr_url: str) -> bool:
     return bool(json.loads(result.stdout))
 
 
-def file_issue(repo: str, pr_url: str, check_name: str) -> None:
+def file_issue(repo: str, pr_url: str, check_name: str, pr_title: str) -> None:
+    body = f"{pr_url}\n\n**Check:** `{check_name}`\n**Upstream PR:** {pr_title}"
     subprocess.run(
         [
             "gh",
@@ -43,7 +44,7 @@ def file_issue(repo: str, pr_url: str, check_name: str) -> None:
             "--label",
             "cpp",
             "--body",
-            f"{pr_url} {check_name}",
+            body,
         ],
         check=True,
     )
@@ -64,13 +65,17 @@ def main() -> None:
             print(f"Skipping malformed line: {line!r}", file=sys.stderr)
             continue
         pr_url, check_name = parts[0], parts[1]
+        pr_title = parts[2] if len(parts) > 2 else ""
 
         if issue_already_exists(repo, pr_url):
             print(f"Skip {pr_url} (already tracked)")
             continue
 
         print(f"Filing issue for {pr_url} ({check_name})")
-        file_issue(repo, pr_url, check_name)
+        try:
+            file_issue(repo, pr_url, check_name, pr_title)
+        except subprocess.CalledProcessError as e:
+            print(f"Failed to file issue for {pr_url}: {e}", file=sys.stderr)
 
 
 if __name__ == "__main__":

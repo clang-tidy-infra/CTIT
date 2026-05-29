@@ -6,13 +6,15 @@ import subprocess
 import sys
 from pathlib import Path
 
+_POLL_SCRIPT = Path(__file__).parent / "poll_upstream.py"
+
 
 def main() -> None:
     output_file = Path(sys.argv[1] if len(sys.argv) > 1 else "candidates.tsv")
 
     with output_file.open("w") as f:
         subprocess.run(
-            [sys.executable, "poll_upstream.py"],
+            [sys.executable, str(_POLL_SCRIPT)],
             stdout=f,
             check=True,
         )

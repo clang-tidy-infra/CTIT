@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Detect open upstream LLVM PRs that modify a clang-tidy check.
 
-Emits one TSV line per candidate to stdout: ``<pr_url>\\t<check_name>``.
+Emits one TSV line per candidate to stdout: ``<pr_url>\\t<check_name>\\t<pr_title>``.
 Informational/skip messages go to stderr.
 """
 
@@ -22,21 +22,28 @@ SOURCE_RE = re.compile(
 DOC_RE = re.compile(
     r"^clang-tools-extra/docs/clang-tidy/checks/([a-z0-9-]+)/([a-z0-9-]+)\.rst$"
 )
+CLANG_TIDY_PREFIX_RE = re.compile(r"^\[clang-tidy\]", re.IGNORECASE)
 ADD_WORD_RE = re.compile(r"\badd\b", re.IGNORECASE)
 CHECK_WORD_RE = re.compile(r"\bcheck\b", re.IGNORECASE)
 
 
 def camel_to_kebab(name: str) -> str:
+    # Acronyms like "STL" expand to "s-t-l"; LLVM check class names use title case so this is fine.
     return re.sub(r"(?<!^)(?=[A-Z])", "-", name).lower()
 
 
 def looks_like_new_check(title: str) -> bool:
-    """True when title contains both ``add`` and ``check`` as whole words.
+    """True when title has the ``[clang-tidy]`` prefix and contains both
+    ``add`` and ``check`` as whole words.
 
     Matches "[clang-tidy] Add foo check" but rejects "Extend foo to ..." or
     "Fix false positive in foo".
     """
-    return bool(ADD_WORD_RE.search(title) and CHECK_WORD_RE.search(title))
+    return bool(
+        CLANG_TIDY_PREFIX_RE.search(title)
+        and ADD_WORD_RE.search(title)
+        and CHECK_WORD_RE.search(title)
+    )
 
 
 def gh_json(*args: str) -> Any:
@@ -107,7 +114,13 @@ def detect_check(file_paths: list[str]) -> str | None:
 
 
 def main() -> None:
-    for pr in candidate_prs():
+    prs = candidate_prs()
+    if len(prs) == PR_LIST_LIMIT:
+        print(
+            f"# warning: hit PR_LIST_LIMIT={PR_LIST_LIMIT}; some candidates may be missed",
+            file=sys.stderr,
+        )
+    for pr in prs:
         if pr.get("isDraft"):
             print(f"# skip #{pr['number']} (draft): {pr['title']}", file=sys.stderr)
             continue
@@ -121,7 +134,7 @@ def main() -> None:
         if check is None:
             print(f"# skip #{pr['number']}: {pr['title']}", file=sys.stderr)
             continue
-        print(f"{pr['url']}\t{check}")
+        print(f"{pr['url']}\t{check}\t{pr['title']}")
 
 
 if __name__ == "__main__":
