@@ -1,9 +1,11 @@
 import os
+import random
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
-from slim_comment import GITHUB_COMMENT_LIMIT, slim_comment
+from slim_comment import GITHUB_COMMENT_LIMIT, _gzip_size, slim_comment
 
 ARTIFACT_URL = "https://github.com/org/repo/actions/runs/1/artifacts/2"
 
@@ -48,10 +50,21 @@ _AI_ANALYSIS = """\
 SMALL_REPORT = _SUMMARY + "\n" + _PROJECT_DETAILS + "\n" + _AI_ANALYSIS
 
 
+def _make_incompressible(n_chars: int) -> str:
+    """Generate n_chars of deterministic random printable ASCII that gzips poorly."""
+    rng = random.Random(42)
+    pool = "".join(chr(i) for i in range(33, 127))
+    return "".join(rng.choice(pool) for _ in range(n_chars))
+
+
+# 80000 chars of random ASCII → ~66414 gzipped bytes (verified > GITHUB_COMMENT_LIMIT).
+_HUGE_CONTENT = _make_incompressible(80000)
+
+
 def _huge_ai() -> str:
     return (
         "<details>\n<summary><b>AI False-Positive Analysis</b> (click to expand)</summary>\n"
-        + "x" * GITHUB_COMMENT_LIMIT
+        + _HUGE_CONTENT
         + "\n</details>\n"
     )
 
@@ -59,7 +72,7 @@ def _huge_ai() -> str:
 def _huge_project_details() -> str:
     return (
         "<details>\n<summary><strong>cppcheck Details (9999 warnings, 0 errors)</strong></summary>\n"
-        + "x" * GITHUB_COMMENT_LIMIT
+        + _HUGE_CONTENT
         + "\n</details>\n"
     )
 
@@ -73,7 +86,7 @@ class TestSlimComment(unittest.TestCase):
 
     def test_huge_ai_is_stripped(self):
         content = _SUMMARY + "\n" + _PROJECT_DETAILS + "\n" + _huge_ai()
-        assert len(content) > GITHUB_COMMENT_LIMIT
+        assert _gzip_size(content) > GITHUB_COMMENT_LIMIT
         result = slim_comment(content, ARTIFACT_URL)
         self.assertNotIn("AI False-Positive Analysis", result)
         self.assertIn("cppcheck Details", result)
@@ -81,11 +94,11 @@ class TestSlimComment(unittest.TestCase):
             f"[Full per-project details in workflow artifacts]({ARTIFACT_URL})",
             result,
         )
-        self.assertLessEqual(len(result), GITHUB_COMMENT_LIMIT)
+        self.assertLessEqual(_gzip_size(result), GITHUB_COMMENT_LIMIT)
 
     def test_huge_ai_and_findings_both_stripped(self):
         content = _SUMMARY + "\n" + _huge_project_details() + "\n" + _huge_ai()
-        assert len(content) > GITHUB_COMMENT_LIMIT
+        assert _gzip_size(content) > GITHUB_COMMENT_LIMIT
         result = slim_comment(content, ARTIFACT_URL)
         self.assertNotIn("AI False-Positive Analysis", result)
         self.assertNotIn("cppcheck Details", result)
@@ -112,13 +125,13 @@ class TestSlimComment(unittest.TestCase):
         self.assertEqual(result, "")
 
     def test_exactly_at_limit_fits(self):
-        content = "x" * GITHUB_COMMENT_LIMIT
-        result = slim_comment(content, ARTIFACT_URL)
-        self.assertEqual(result, content)
+        with patch("slim_comment._gzip_size", return_value=GITHUB_COMMENT_LIMIT):
+            result = slim_comment("some content", ARTIFACT_URL)
+        self.assertEqual(result, "some content")
 
     def test_one_over_limit_triggers_slimming(self):
-        content = "x" * (GITHUB_COMMENT_LIMIT + 1)
-        result = slim_comment(content, ARTIFACT_URL)
+        with patch("slim_comment._gzip_size", return_value=GITHUB_COMMENT_LIMIT + 1):
+            result = slim_comment("no details here", ARTIFACT_URL)
         self.assertIn(ARTIFACT_URL, result)
 
 
@@ -166,8 +179,8 @@ class TestSlimCommentCLI(unittest.TestCase):
         self.assertIn("Error reading", proc.stderr)
 
     def test_warns_when_still_over_limit(self):
-        # No <details> blocks, raw content over limit — can't slim further.
-        huge = "x" * (GITHUB_COMMENT_LIMIT + 1)
+        # No <details> blocks, content over gzip limit — can't slim further.
+        huge = _make_incompressible(80000)
         _, stderr, code = self._run(huge, ARTIFACT_URL)
         self.assertEqual(code, 0)
         self.assertIn("Warning", stderr)
