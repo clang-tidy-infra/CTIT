@@ -8,9 +8,16 @@ Algorithm:
 """
 
 import argparse
+import gzip
 import sys
 
 GITHUB_COMMENT_LIMIT = 65536
+
+
+def _gzip_size(text: str) -> int:
+    return len(gzip.compress(text.encode("utf-8")))
+
+
 _AI_MARKER = "AI False-Positive Analysis"
 
 
@@ -46,7 +53,7 @@ def _remove_spans(text: str, spans: list[tuple[int, int]]) -> str:
 
 def slim_comment(content: str, artifact_url: str) -> str:
     """Return content slimmed to fit within GITHUB_COMMENT_LIMIT."""
-    if len(content) <= GITHUB_COMMENT_LIMIT:
+    if _gzip_size(content) <= GITHUB_COMMENT_LIMIT:
         return content
 
     artifact_link = (
@@ -59,7 +66,7 @@ def slim_comment(content: str, artifact_url: str) -> str:
     # Step 2: drop AI analysis, keep per-project findings.
     if ai_spans:
         candidate = _remove_spans(content, ai_spans).rstrip() + artifact_link
-        if len(candidate) <= GITHUB_COMMENT_LIMIT:
+        if _gzip_size(candidate) <= GITHUB_COMMENT_LIMIT:
             return candidate
 
     # Step 3: drop everything — keep summary table only.
@@ -84,9 +91,9 @@ def main() -> None:
 
     slimmed = slim_comment(content, args.artifact_url)
 
-    if len(slimmed) > GITHUB_COMMENT_LIMIT:
+    if _gzip_size(slimmed) > GITHUB_COMMENT_LIMIT:
         print(
-            f"Warning: slimmed comment is {len(slimmed)} chars "
+            f"Warning: slimmed comment is {_gzip_size(slimmed)} gzipped bytes "
             f"(limit is {GITHUB_COMMENT_LIMIT})",
             file=sys.stderr,
         )
