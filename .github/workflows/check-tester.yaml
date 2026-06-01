@@ -200,10 +200,10 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           python3 -c "
-import gzip, json, sys
-payload = json.dumps({'body': open('issue.md').read()}).encode('utf-8')
-sys.stdout.buffer.write(gzip.compress(payload))
-" | curl -s -f -X PATCH \
+          import gzip, json, sys
+          payload = json.dumps({'body': open('issue.md').read()}).encode('utf-8')
+          sys.stdout.buffer.write(gzip.compress(payload))
+          " | curl -s -f -X PATCH \
             -H "Content-Type: application/json" \
             -H "Content-Encoding: gzip" \
             -H "Authorization: Bearer $GH_TOKEN" \
