@@ -94,7 +94,7 @@ jobs:
             --run-id "$RUN_ID" \
             --artifact-url "$ARTIFACT_URL" \
             --summary-file crash-summary.md \
-            --profile-file profile-report.md > issue.md
+            --profile-file profile-report.md > logs/issue.md
           gh issue create \
             --title "Nightly crash detection: crashes found $(date -u '+%Y-%m-%d %H:%M:%S')" \
-            --body-file issue.md
+            --body-file logs/issue.md
