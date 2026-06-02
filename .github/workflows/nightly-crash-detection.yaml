@@ -1,0 +1,85 @@
+name: Nightly Crash Detection
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  crash-detection:
+    runs-on: self-hosted
+    container:
+      image: ghcr.io/clang-tidy-infra/ctit-runner:latest # zizmor: ignore[unpinned-images]
+      options: --user root
+    timeout-minutes: 360
+    permissions:
+      contents: read
+      issues: write
+      packages: read
+
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+
+    steps:
+      - name: Checkout CTIT
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          submodules: true
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Prepare LLVM submodule
+        run: |
+          git config --global --add safe.directory '*'
+          git -C llvm-project checkout .
+          git -C llvm-project clean -fdx
+
+      - name: Clone test projects
+        run: ./ctit.py clone --work-dir test_projects
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@9e7fa8a12102821edf02ca5dbea1acd0f89a2696 # v0.0.10
+
+      - name: Build clang-tidy
+        run: bash build.sh
+
+      - name: Configure test projects
+        run: ./ctit.py configure
+
+      - name: Run clang-tidy with all checks
+        run: >
+          ./ctit.py analyze
+          --check-name "*,-clang-analyzer-*"
+          --clang-tidy-binary llvm-project/build/bin/clang-tidy
+          --run-tidy-script llvm-project/clang-tools-extra/clang-tidy/tool/run-clang-tidy.py
+
+      - name: Detect crashes
+        id: detect-crashes
+        run: python3 crash_detection/detect_crashes.py --log-dir logs/ --summary-file crash-summary.md
+
+      - name: Upload logs
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        id: artifact
+        if: always()
+        with:
+          name: crash-detection-logs
+          path: logs/
+
+      - name: Create crash issue
+        if: steps.detect-crashes.outputs.crashes_found == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          ARTIFACT_URL: ${{ steps.artifact.outputs.artifact-url }}
+        run: |
+          BODY=$(python3 crash_detection/create_crash_issue.py \
+            --repo "$REPO" \
+            --run-id "$RUN_ID" \
+            --artifact-url "$ARTIFACT_URL" \
+            --summary-file crash-summary.md)
+          gh issue create \
+            --title "Nightly crash detection: crashes found $(date -u +%Y-%m-%d)" \
+            --body "$BODY"
