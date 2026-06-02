@@ -10,8 +10,14 @@ from dataclasses import dataclass, field
 CRASH_PATTERN = re.compile(
     r"Stack dump:|PLEASE submit a bug report|LLVM ERROR:|Assertion `"
 )
+# Matches both stack dump items ("ASTMatcher: Processing '...' against:")
+# and any other "Processing '...' against" lines.
 _PROCESSING_PATTERN = re.compile(r"Processing '([^']+)' against")
-_CONTEXT_LINES = 10
+# Stack dump item 1 describes the phase when the crash occurred.
+_STACK_PHASE = re.compile(r"^\s*1\.\s+(.+)$")
+# Progress lines from run-clang-tidy.py: [  N/M][Xs] ...
+_PROGRESS_LINE = re.compile(r"^\[\s*\d+/\d+\]\[")
+_MAX_CRASH_LINES = 150
 _PREFERRED_PROJECT = "llvm-project"
 
 
@@ -24,7 +30,35 @@ class _CrashExample:
 @dataclass
 class _CheckCrashes:
     count: int = 0
+    # At most one example per project to avoid storing thousands of duplicates.
     examples: list[_CrashExample] = field(default_factory=list)
+
+
+def _capture_crash(lines: list[str], start: int) -> list[str]:
+    """Capture from the crash trigger line until the next progress line or limit."""
+    result = []
+    for i in range(start, min(start + _MAX_CRASH_LINES, len(lines))):
+        if i > start and _PROGRESS_LINE.match(lines[i]):
+            break
+        result.append(lines[i])
+    return result
+
+
+def _check_from_context(context: list[str]) -> str:
+    """Extract the crashing check name from the stack dump context.
+
+    Falls back to the stack dump phase (item 1) when no ASTMatcher check is
+    present, which happens for crashes during parsing or preprocessing.
+    """
+    for line in context:
+        m = _PROCESSING_PATTERN.search(line)
+        if m:
+            return m.group(1)
+    for line in context:
+        m = _STACK_PHASE.match(line)
+        if m:
+            return f"unknown ({m.group(1).strip()})"
+    return "unknown"
 
 
 def _parse_log(path: str, project: str) -> dict[str, list[list[str]]]:
@@ -37,15 +71,15 @@ def _parse_log(path: str, project: str) -> dict[str, list[list[str]]]:
         return {}
 
     result: dict[str, list[list[str]]] = {}
-    current_check = "unknown"
-
-    for i, line in enumerate(lines):
-        m = _PROCESSING_PATTERN.search(line)
-        if m:
-            current_check = m.group(1)
-        if CRASH_PATTERN.search(line):
-            context = lines[i : i + _CONTEXT_LINES + 1]
-            result.setdefault(current_check, []).append(context)
+    i = 0
+    while i < len(lines):
+        if CRASH_PATTERN.search(lines[i]):
+            context = _capture_crash(lines, i)
+            check = _check_from_context(context)
+            result.setdefault(check, []).append(context)
+            i += len(context)
+        else:
+            i += 1
 
     return result
 
@@ -66,8 +100,13 @@ def find_crashes(log_dir: str) -> dict[str, _CheckCrashes]:
         for check, occurrences in per_check.items():
             info = crashes.setdefault(check, _CheckCrashes())
             info.count += len(occurrences)
+            # Keep only one example per project to avoid huge memory use.
+            seen_projects = {ex.project for ex in info.examples}
             for ctx in occurrences:
-                info.examples.append(_CrashExample(project=project, lines=ctx))
+                if project not in seen_projects:
+                    info.examples.append(_CrashExample(project=project, lines=ctx))
+                    seen_projects.add(project)
+                    break
 
     return crashes
 
