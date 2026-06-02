@@ -12,7 +12,7 @@ CRASH_PATTERN = re.compile(
 )
 # Matches both stack dump items ("ASTMatcher: Processing '...' against:")
 # and any other "Processing '...' against" lines.
-_PROCESSING_PATTERN = re.compile(r"Processing '([^']+)' against")
+_PROCESSING_PATTERN = re.compile(r"(?:Processing|Matching) '([^']+)' against")
 # Stack dump item 1 describes the phase when the crash occurred.
 _STACK_PHASE = re.compile(r"^\s*1\.\s+(.+)$")
 # Progress lines from run-clang-tidy.py: [  N/M][Xs] ...
