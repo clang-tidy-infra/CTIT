@@ -51,7 +51,9 @@ def parse_timings(log_dir: str) -> list[_RunEntry]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--log-dir", default="logs", help="Directory containing .log files")
+    parser.add_argument(
+        "--log-dir", default="logs", help="Directory containing .log files"
+    )
     parser.add_argument("--top", type=int, default=10, help="Number of results to show")
     args = parser.parse_args()
 
