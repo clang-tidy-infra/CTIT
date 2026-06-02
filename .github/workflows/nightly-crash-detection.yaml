@@ -89,12 +89,12 @@ jobs:
           RUN_ID: ${{ github.run_id }}
           ARTIFACT_URL: ${{ steps.artifact.outputs.artifact-url }}
         run: |
-          BODY=$(python3 crash_detection/create_crash_issue.py \
+          python3 crash_detection/create_crash_issue.py \
             --repo "$REPO" \
             --run-id "$RUN_ID" \
             --artifact-url "$ARTIFACT_URL" \
             --summary-file crash-summary.md \
-            --profile-file profile-report.md)
+            --profile-file profile-report.md > issue.md
           gh issue create \
             --title "Nightly crash detection: crashes found $(date -u '+%Y-%m-%d %H:%M:%S')" \
-            --body "$BODY"
+            --body-file issue.md
