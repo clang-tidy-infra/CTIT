@@ -73,7 +73,9 @@ def load_profiles(log_dir: str) -> dict[str, tuple[float, dict[str, float]]]:
 
 
 def write_markdown(
-    profiles: dict[str, tuple[float, dict[str, float]]], output: str
+    profiles: dict[str, tuple[float, dict[str, float]]],
+    output: str,
+    output_detailed: str | None = None,
 ) -> None:
     combined: dict[str, float] = {}
     for _, checks in profiles.values():
@@ -91,21 +93,28 @@ def write_markdown(
         lines.append(f"| `{check}` | {wall:.2f} | {pct:.1f}% |\n")
     lines.append("\n")
 
-    if len(profiles) > 1:
-        lines.append(
-            "<details>\n<summary>Per-project breakdown (click to expand)</summary>\n\n"
-        )
-        for project, (total_wall, checks) in sorted(profiles.items()):
-            lines.append(f"### {project} (total wall: {total_wall:.1f}s)\n\n")
-            lines.append("| Check | Wall Time (s) |\n")
-            lines.append("|-------|---------------|\n")
-            for check, wall in sorted(checks.items(), key=lambda x: -x[1]):
-                lines.append(f"| `{check}` | {wall:.2f} |\n")
-            lines.append("\n")
-        lines.append("</details>\n")
-
     with open(output, "w") as f:
         f.writelines(lines)
+
+    if output_detailed:
+        detailed_lines = lines.copy()
+        if len(profiles) > 1:
+            detailed_lines.append(
+                "<details>\n<summary>Per-project breakdown (click to expand)</summary>\n\n"
+            )
+            for project, (total_wall, checks) in sorted(profiles.items()):
+                detailed_lines.append(
+                    f"### {project} (total wall: {total_wall:.1f}s)\n\n"
+                )
+                detailed_lines.append("| Check | Wall Time (s) |\n")
+                detailed_lines.append("|-------|---------------|\n")
+                for check, wall in sorted(checks.items(), key=lambda x: -x[1]):
+                    detailed_lines.append(f"| `{check}` | {wall:.2f} |\n")
+                detailed_lines.append("\n")
+            detailed_lines.append("</details>\n")
+
+        with open(output_detailed, "w") as f:
+            f.writelines(detailed_lines)
 
 
 def main() -> None:
@@ -114,7 +123,12 @@ def main() -> None:
         "--log-dir", default="logs", help="Directory containing .log files"
     )
     parser.add_argument(
-        "--output", default="profile-report.md", help="Output markdown file"
+        "--output", default="profile-report.md", help="Output markdown file (summary only)"
+    )
+    parser.add_argument(
+        "--output-detailed",
+        default="profile-report-detailed.md",
+        help="Output markdown file with per-project breakdown",
     )
     args = parser.parse_args()
 
@@ -123,8 +137,11 @@ def main() -> None:
         print("No profiling data found in logs.", file=sys.stderr)
         sys.exit(0)
 
-    write_markdown(profiles, args.output)
-    print(f"Profile report written to {args.output} ({len(profiles)} project(s))")
+    write_markdown(profiles, args.output, args.output_detailed)
+    print(
+        f"Profile reports written: {args.output} (summary), "
+        f"{args.output_detailed} (detailed) ({len(profiles)} project(s))"
+    )
 
 
 if __name__ == "__main__":

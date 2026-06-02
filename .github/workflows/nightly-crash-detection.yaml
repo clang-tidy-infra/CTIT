@@ -79,7 +79,7 @@ jobs:
           name: crash-detection-logs
           path: |
             logs/
-            profile-report.md
+            profile-report-detailed.md
 
       - name: Create crash issue
         if: steps.detect-crashes.outputs.crashes_found == 'true'
