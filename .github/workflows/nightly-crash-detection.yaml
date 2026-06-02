@@ -88,5 +88,5 @@ jobs:
             --artifact-url "$ARTIFACT_URL" \
             --summary-file crash-summary.md)
           gh issue create \
-            --title "Nightly crash detection: crashes found $(date -u +%Y-%m-%d)" \
+            --title "Nightly crash detection: crashes found $(date -u '+%Y-%m-%d %H:%M:%S')" \
             --body "$BODY"
