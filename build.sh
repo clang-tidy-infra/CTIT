@@ -42,7 +42,7 @@ cmake -G Ninja \
     -DCLANG_TIDY_ENABLE_STATIC_ANALYZER=OFF \
     "${CMAKE_EXTRA_ARGS[@]}"
 
-echo "Building clang-tidy"
-ninja -C "$BUILD_DIR" clang-tidy
+echo "Building clang-tidy and llvm-symbolizer"
+ninja -C "$BUILD_DIR" clang-tidy llvm-symbolizer
 
 echo "Build completed successfully!"
