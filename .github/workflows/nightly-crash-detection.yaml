@@ -62,10 +62,14 @@ jobs:
           --clang-tidy-binary llvm-project/build/bin/clang-tidy
           --run-tidy-script llvm-project/clang-tools-extra/clang-tidy/tool/run-clang-tidy.py
           --skip-headers
+          --enable-check-profile
 
       - name: Detect crashes
         id: detect-crashes
         run: python3 crash_detection/detect_crashes.py --log-dir logs/ --summary-file crash-summary.md
+
+      - name: Parse check timings profile
+        run: python3 crash_detection/parse_check_profile.py --log-dir logs/ --output profile-report.md
 
       - name: Upload logs
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -73,7 +77,9 @@ jobs:
         if: always()
         with:
           name: crash-detection-logs
-          path: logs/
+          path: |
+            logs/
+            profile-report.md
 
       - name: Create crash issue
         if: steps.detect-crashes.outputs.crashes_found == 'true'
@@ -87,7 +93,8 @@ jobs:
             --repo "$REPO" \
             --run-id "$RUN_ID" \
             --artifact-url "$ARTIFACT_URL" \
-            --summary-file crash-summary.md)
+            --summary-file crash-summary.md \
+            --profile-file profile-report.md)
           gh issue create \
             --title "Nightly crash detection: crashes found $(date -u '+%Y-%m-%d %H:%M:%S')" \
             --body "$BODY"
