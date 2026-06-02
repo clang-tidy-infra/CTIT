@@ -123,7 +123,9 @@ def main() -> None:
         "--log-dir", default="logs", help="Directory containing .log files"
     )
     parser.add_argument(
-        "--output", default="profile-report.md", help="Output markdown file (summary only)"
+        "--output",
+        default="profile-report.md",
+        help="Output markdown file (summary only)",
     )
     parser.add_argument(
         "--output-detailed",
