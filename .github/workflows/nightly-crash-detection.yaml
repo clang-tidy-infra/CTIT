@@ -36,6 +36,12 @@ jobs:
           git -C llvm-project checkout .
           git -C llvm-project clean -fdx
 
+      - name: Restore test-projects cache
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: test_projects
+          key: test-projects-${{ hashFiles('testers/projects.json') }}
+
       - name: Clone test projects
         run: ./ctit.py clone --work-dir test_projects
 
