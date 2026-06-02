@@ -64,6 +64,7 @@ jobs:
 
     env:
       SCCACHE_GHA_ENABLED: "true"
+      LLVM_SYMBOLIZER_PATH: ${{ github.workspace }}/llvm-project/build/bin/llvm-symbolizer
 
     steps:
       - name: Acknowledge trigger
