@@ -91,6 +91,11 @@ def main(argv: list[str] | None = None) -> None:
         default=CONFIG_FILE,
         help="Path to config file (default: bundled projects.json)",
     )
+    analyze_parser.add_argument(
+        "--skip-headers",
+        action="store_true",
+        help="Pass -header-filter= to clang-tidy so no header diagnostics are emitted",
+    )
 
     report_parser = subparsers.add_parser(
         "report",
@@ -141,6 +146,7 @@ def main(argv: list[str] | None = None) -> None:
             work_dir=args.work_dir,
             log_dir=args.log_dir,
             config_path=args.config,
+            skip_headers=args.skip_headers,
         )
     elif args.command == "report":
         generate_report(log_dir=args.log_dir, output=args.output)
