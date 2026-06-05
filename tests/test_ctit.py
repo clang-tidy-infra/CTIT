@@ -64,6 +64,7 @@ class TestCtitCli(unittest.TestCase):
             work_dir=PROJECTS_DIR,
             log_dir=DEFAULT_LOG_DIR,
             config_path=CONFIG_FILE,
+            skip_headers=False,
         )
 
     @patch("ctit.analyze")
@@ -85,6 +86,7 @@ class TestCtitCli(unittest.TestCase):
             work_dir=PROJECTS_DIR,
             log_dir=DEFAULT_LOG_DIR,
             config_path=CONFIG_FILE,
+            skip_headers=False,
         )
 
     @patch("ctit.analyze")
@@ -108,6 +110,7 @@ class TestCtitCli(unittest.TestCase):
             work_dir=PROJECTS_DIR,
             log_dir=DEFAULT_LOG_DIR,
             config_path=CONFIG_FILE,
+            skip_headers=False,
         )
 
     @patch("ctit.generate_report")

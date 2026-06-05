@@ -119,6 +119,7 @@ def parse_log_file(log_path: str) -> ProjectResult:
                 )
 
                 rel_path = get_relative_path(raw_path, project_name)
+
                 key = (rel_path, int(line_num), int(col_num), check_name)
                 if key in seen:
                     continue
