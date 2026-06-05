@@ -13,6 +13,9 @@ from testers.config import CONFIG_FILE, PROJECTS_DIR, Project, load_projects
 DEFAULT_CLANG_TIDY_BIN = "clang-tidy"
 DEFAULT_LOG_DIR = "logs"
 
+# Matches "[  1/165]" lines
+_PROGRESS_RE = re.compile(r"^\[\s*\d+/\d+\]|^Running clang-tidy in ")
+
 ANALYSIS_CONFIG_FIELDS = {
     "cmake_source_subdir",
     "cmake_flags",
@@ -131,12 +134,14 @@ def run_clang_tidy(
     source_dir: str,
     file_regex: str | None,
     log_file: str,
+    progress_file: str,
     tidy_config: str | None,
     skip_headers: bool = False,
 ) -> None:
     """Run run-clang-tidy.py and save output to log file."""
     cmd = [
         "python3",
+        "-u",
         run_tidy_script,
         "-clang-tidy-binary",
         clang_tidy_bin,
@@ -156,14 +161,17 @@ def run_clang_tidy(
         full_regex = f"^{re.escape(source_dir)}/{file_regex}"
         cmd.append(full_regex)
 
-    with open(log_file, "w") as log:
+    with open(log_file, "w") as log, open(progress_file, "a") as progress:
         proc = subprocess.Popen(
             cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
         )
         assert proc.stdout is not None
         for line in proc.stdout:
-            print(line, end="")
-            log.write(line)
+            if _PROGRESS_RE.match(line):
+                print(line, end="")
+                progress.write(line)
+            else:
+                log.write(line)
         proc.wait()
 
 
@@ -210,6 +218,7 @@ def analyze_project(
     run_tidy_script: str,
     check_name: str,
     log_dir: str,
+    progress_file: str,
     tidy_config: str | None = None,
     skip_headers: bool = False,
 ) -> None:
@@ -228,6 +237,7 @@ def analyze_project(
         source_dir,
         config.file_regex,
         log_file,
+        progress_file,
         tidy_config,
         skip_headers,
     )
@@ -273,6 +283,9 @@ def analyze(
     configs = get_analysis_configs(config_path)
     os.makedirs(log_dir, exist_ok=True)
 
+    progress_file = os.path.join(log_dir, "progress.log")
+    open(progress_file, "w").close()
+
     for project in projects:
         config = configs.get(project.name, AnalysisConfig(name=project.name))
         source_dir = os.path.join(work_dir, project.name)
@@ -284,6 +297,7 @@ def analyze(
             run_tidy_script,
             check_name,
             log_dir,
+            progress_file,
             tidy_config,
             skip_headers,
         )

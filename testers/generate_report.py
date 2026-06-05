@@ -269,7 +269,11 @@ def _load_results(log_dir: str) -> tuple[list[ProjectResult], dict[str, str]]:
         print(f"Log directory '{log_dir}' not found.", file=sys.stderr)
         sys.exit(1)
 
-    log_files = glob.glob(os.path.join(log_dir, "*.log"))
+    log_files = [
+        p
+        for p in glob.glob(os.path.join(log_dir, "*.log"))
+        if os.path.basename(p) != "progress.log"
+    ]
     if not log_files:
         print(f"No log files found in '{log_dir}'.", file=sys.stderr)
         sys.exit(0)
