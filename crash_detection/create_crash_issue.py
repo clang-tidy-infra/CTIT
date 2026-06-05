@@ -66,13 +66,13 @@ def build_body(
         f"**Logs:** {artifact_url}\n\n",
     ]
 
+    parts.append(summary)
+
     if profile_file:
         profile = _read_file(profile_file)
         profile = _trim_profile_to_top_n(profile, n=15)
-        parts.append(profile)
         parts.append("\n")
-
-    parts.append(summary)
+        parts.append(profile)
 
     return "".join(parts)
 
