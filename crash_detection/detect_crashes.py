@@ -15,8 +15,6 @@ CRASH_PATTERN = re.compile(
 _PROCESSING_PATTERN = re.compile(r"(?:Processing|Matching) '([^']+)' against")
 # Stack dump item 1 describes the phase when the crash occurred.
 _STACK_PHASE = re.compile(r"^\s*1\.\s+(.+)$")
-# Progress lines from run-clang-tidy.py: [  N/M][Xs] ...
-_PROGRESS_LINE = re.compile(r"^\[\s*\d+/\d+\]\[")
 _MAX_CRASH_LINES = 150
 _PREFERRED_PROJECT = "llvm-project"
 
@@ -36,12 +34,7 @@ class _CheckCrashes:
 
 def _capture_crash(lines: list[str], start: int) -> list[str]:
     """Capture from the crash trigger line until the next progress line or limit."""
-    result = []
-    for i in range(start, min(start + _MAX_CRASH_LINES, len(lines))):
-        if i > start and _PROGRESS_LINE.match(lines[i]):
-            break
-        result.append(lines[i])
-    return result
+    return lines[start : start + _MAX_CRASH_LINES]
 
 
 def _check_from_context(context: list[str]) -> str:

@@ -158,6 +158,7 @@ class TestRunClangTidy(unittest.TestCase):
         mock_popen.return_value = self._make_mock_proc([])
         with tempfile.TemporaryDirectory() as tmp_dir:
             log_file = os.path.join(tmp_dir, "test.log")
+            progress_file = os.path.join(tmp_dir, "progress.log")
             run_clang_tidy(
                 "/bin/clang-tidy",
                 "/script/run-clang-tidy.py",
@@ -166,6 +167,7 @@ class TestRunClangTidy(unittest.TestCase):
                 "/src",
                 None,
                 log_file,
+                progress_file,
                 None,
             )
 
@@ -180,6 +182,7 @@ class TestRunClangTidy(unittest.TestCase):
         mock_popen.return_value = self._make_mock_proc([])
         with tempfile.TemporaryDirectory() as tmp_dir:
             log_file = os.path.join(tmp_dir, "test.log")
+            progress_file = os.path.join(tmp_dir, "progress.log")
             run_clang_tidy(
                 "/bin/clang-tidy",
                 "/script/run-clang-tidy.py",
@@ -188,6 +191,7 @@ class TestRunClangTidy(unittest.TestCase):
                 "/src/project",
                 "clang/.*$",
                 log_file,
+                progress_file,
                 None,
             )
 
@@ -199,6 +203,7 @@ class TestRunClangTidy(unittest.TestCase):
         mock_popen.return_value = self._make_mock_proc([])
         with tempfile.TemporaryDirectory() as tmp_dir:
             log_file = os.path.join(tmp_dir, "test.log")
+            progress_file = os.path.join(tmp_dir, "progress.log")
             run_clang_tidy(
                 "/bin/clang-tidy",
                 "/script/run-clang-tidy.py",
@@ -207,6 +212,7 @@ class TestRunClangTidy(unittest.TestCase):
                 "/src",
                 None,
                 log_file,
+                progress_file,
                 "VariableCase: camelBack",
             )
 
@@ -218,6 +224,7 @@ class TestRunClangTidy(unittest.TestCase):
         mock_popen.return_value = self._make_mock_proc(["line1\n", "line2\n"])
         with tempfile.TemporaryDirectory() as tmp_dir:
             log_file = os.path.join(tmp_dir, "test.log")
+            progress_file = os.path.join(tmp_dir, "progress.log")
             run_clang_tidy(
                 "/bin/ct",
                 "/script/rct.py",
@@ -226,6 +233,7 @@ class TestRunClangTidy(unittest.TestCase):
                 "/src",
                 None,
                 log_file,
+                progress_file,
                 None,
             )
 
@@ -294,6 +302,7 @@ class TestAnalyzeProject(unittest.TestCase):
             "/script/rct.py",
             "check",
             "/logs",
+            "/logs/progress.log",
         )
 
         mock_tidy.assert_called_once()
