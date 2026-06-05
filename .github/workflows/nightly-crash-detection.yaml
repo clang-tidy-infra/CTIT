@@ -61,6 +61,7 @@ jobs:
           --check-name "*,-clang-analyzer-*"
           --clang-tidy-binary llvm-project/build/bin/clang-tidy
           --run-tidy-script llvm-project/clang-tools-extra/clang-tidy/tool/run-clang-tidy.py
+          --skip-headers
 
       - name: Detect crashes
         id: detect-crashes
