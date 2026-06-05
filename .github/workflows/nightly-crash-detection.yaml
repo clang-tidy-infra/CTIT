@@ -71,20 +71,9 @@ jobs:
       - name: Parse check timings profile
         run: python3 crash_detection/parse_check_profile.py --log-dir logs/ --output profile-report.md
 
-      - name: Upload logs
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        id: artifact
-        if: always()
-        with:
-          name: crash-detection-logs
-          path: |
-            logs/
-            profile-report-detailed.md
-
-      - name: Create crash issue
+      - name: Generate crash issue markdown
         if: steps.detect-crashes.outputs.crashes_found == 'true'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
           RUN_ID: ${{ github.run_id }}
           ARTIFACT_URL: ${{ steps.artifact.outputs.artifact-url }}
@@ -96,6 +85,22 @@ jobs:
             --summary-file crash-summary.md \
             --profile-file profile-report.md \
             --output-file logs/issue.md
+
+      - name: Upload logs
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        id: artifact
+        if: always()
+        with:
+          name: crash-detection-logs
+          path: |
+            logs/
+            profile-report-detailed.md
+
+      - name: Create GitHub issue
+        if: steps.detect-crashes.outputs.crashes_found == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
           gh issue create \
             --title "Nightly crash detection: crashes found $(date -u '+%Y-%m-%d %H:%M:%S')" \
             --body-file logs/issue.md

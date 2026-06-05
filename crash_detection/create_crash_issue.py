@@ -3,7 +3,6 @@
 
 import argparse
 import os
-import re
 import sys
 
 
@@ -32,7 +31,7 @@ def _trim_profile_to_top_n(profile: str, n: int = 15) -> str:
             header_lines.append(line)
         elif in_data and "|" in line and len(line.strip()) > 0:
             data_lines.append(line)
-        elif in_data and (not "|" in line or len(line.strip()) == 0):
+        elif in_data and ("|" not in line or len(line.strip()) == 0):
             in_data = False
             footer_lines.append(line)
         else:
