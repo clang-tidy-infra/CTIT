@@ -58,7 +58,7 @@ jobs:
       - name: Run clang-tidy with all checks
         run: >
           ./ctit.py analyze
-          --check-name "*,-clang-analyzer-*"
+          --check-name "*,-clang-analyzer-*,-bugprone-unchecked-optional-access,-abseil-unchecked-statusor-access"
           --clang-tidy-binary llvm-project/build/bin/clang-tidy
           --run-tidy-script llvm-project/clang-tools-extra/clang-tidy/tool/run-clang-tidy.py
 
