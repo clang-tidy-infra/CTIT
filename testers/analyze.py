@@ -137,6 +137,7 @@ def run_clang_tidy(
     progress_file: str,
     tidy_config: str | None,
     skip_headers: bool = False,
+    profile: bool = False,
 ) -> None:
     """Run run-clang-tidy.py and save output to log file."""
     cmd = [
@@ -153,6 +154,9 @@ def run_clang_tidy(
 
     if skip_headers:
         cmd.append("-header-filter=")
+
+    if profile:
+        cmd.append("-enable-check-profile")
 
     if tidy_config:
         cmd.append(f"-config={tidy_config}")
@@ -221,6 +225,7 @@ def analyze_project(
     progress_file: str,
     tidy_config: str | None = None,
     skip_headers: bool = False,
+    profile: bool = False,
 ) -> None:
     """Run clang-tidy analysis on a single project."""
     source_dir = os.path.abspath(source_dir)
@@ -240,6 +245,7 @@ def analyze_project(
         progress_file,
         tidy_config,
         skip_headers,
+        profile,
     )
 
     print(f"[{project.name}] Finished. Log saved to {log_file}")
@@ -254,6 +260,7 @@ def analyze(
     log_dir: str = DEFAULT_LOG_DIR,
     config_path: str = CONFIG_FILE,
     skip_headers: bool = False,
+    profile: bool = False,
 ) -> None:
     """Run clang-tidy analysis on all configured projects."""
     if not shutil.which(clang_tidy_bin) and not os.path.isfile(clang_tidy_bin):
@@ -300,4 +307,5 @@ def analyze(
             progress_file,
             tidy_config,
             skip_headers,
+            profile,
         )

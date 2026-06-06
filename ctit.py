@@ -96,6 +96,12 @@ def main(argv: list[str] | None = None) -> None:
         action="store_true",
         help="Pass -header-filter= to clang-tidy so no header diagnostics are emitted",
     )
+    analyze_parser.add_argument(
+        "--enable-check-profile",
+        action="store_true",
+        default=False,
+        help="Enable per-check timing profiles (appended to logs)",
+    )
 
     report_parser = subparsers.add_parser(
         "report",
@@ -147,6 +153,7 @@ def main(argv: list[str] | None = None) -> None:
             log_dir=args.log_dir,
             config_path=args.config,
             skip_headers=args.skip_headers,
+            profile=args.enable_check_profile,
         )
     elif args.command == "report":
         generate_report(log_dir=args.log_dir, output=args.output)

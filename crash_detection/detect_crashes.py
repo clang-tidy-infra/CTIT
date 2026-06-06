@@ -15,7 +15,7 @@ CRASH_PATTERN = re.compile(
 _PROCESSING_PATTERN = re.compile(r"(?:Processing|Matching) '([^']+)' against")
 # Stack dump item 1 describes the phase when the crash occurred.
 _STACK_PHASE = re.compile(r"^\s*1\.\s+(.+)$")
-_MAX_CRASH_LINES = 150
+_MAX_CRASH_LINES = 30
 _PREFERRED_PROJECT = "llvm-project"
 
 
