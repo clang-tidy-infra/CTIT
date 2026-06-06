@@ -3,6 +3,12 @@ from unittest.mock import patch
 
 from ctit import main
 from testers.analyze import DEFAULT_CLANG_TIDY_BIN, DEFAULT_LOG_DIR
+from testers.clang_tests import (
+    DEFAULT_CLANG_TEST_LOG_DIR,
+    DEFAULT_CLANG_TEST_OUTPUT,
+    DEFAULT_LLVM_DIR,
+    DEFAULT_TEST_TIMEOUT,
+)
 from testers.config import CONFIG_FILE, PROJECTS_DIR
 
 
@@ -25,6 +31,11 @@ class TestCtitCli(unittest.TestCase):
     def test_analyze_help(self):
         with self.assertRaises(SystemExit) as ctx:
             main(["analyze", "--help"])
+        self.assertEqual(ctx.exception.code, 0)
+
+    def test_clang_tests_help(self):
+        with self.assertRaises(SystemExit) as ctx:
+            main(["clang-tests", "--help"])
         self.assertEqual(ctx.exception.code, 0)
 
     @patch("ctit.clone_projects")
@@ -114,6 +125,57 @@ class TestCtitCli(unittest.TestCase):
             config_path=CONFIG_FILE,
             skip_headers=False,
             profile=False,
+        )
+
+    @patch("ctit.run_clang_tests")
+    def test_clang_tests_calls_runner(self, mock_run):
+        main(["clang-tests", "--check-name", "bugprone-*"])
+        mock_run.assert_called_once_with(
+            check_name="bugprone-*",
+            tidy_config=None,
+            clang_tidy_bin=DEFAULT_CLANG_TIDY_BIN,
+            llvm_dir=DEFAULT_LLVM_DIR,
+            log_dir=DEFAULT_CLANG_TEST_LOG_DIR,
+            output=DEFAULT_CLANG_TEST_OUTPUT,
+            timeout=DEFAULT_TEST_TIMEOUT,
+            jobs=1,
+            extra_args=[],
+        )
+
+    @patch("ctit.run_clang_tests")
+    def test_clang_tests_with_args(self, mock_run):
+        main(
+            [
+                "clang-tests",
+                "--check-name",
+                "readability-*",
+                "--tidy-config",
+                "{}",
+                "--clang-tidy-binary",
+                "/bin/clang-tidy",
+                "--llvm-dir",
+                "/src/llvm",
+                "--log-dir",
+                "/tmp/logs",
+                "--output",
+                "/tmp/out.md",
+                "--timeout",
+                "9",
+                "--jobs",
+                "3",
+                "--extra-arg=-DFOO=1",
+            ]
+        )
+        mock_run.assert_called_once_with(
+            check_name="readability-*",
+            tidy_config="{}",
+            clang_tidy_bin="/bin/clang-tidy",
+            llvm_dir="/src/llvm",
+            log_dir="/tmp/logs",
+            output="/tmp/out.md",
+            timeout=9,
+            jobs=3,
+            extra_args=["-DFOO=1"],
         )
 
     @patch("ctit.generate_report")
