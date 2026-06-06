@@ -8,7 +8,7 @@ import sys
 from dataclasses import dataclass, field
 
 CRASH_PATTERN = re.compile(
-    r"Stack dump:|PLEASE submit a bug report|LLVM ERROR:|Assertion `"
+    r"Stack dump:|PLEASE submit a bug report to https|LLVM ERROR:|Assertion `"
 )
 # Matches both stack dump items ("ASTMatcher: Processing '...' against:")
 # and any other "Processing '...' against" lines.
