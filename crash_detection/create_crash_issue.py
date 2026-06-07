@@ -53,7 +53,6 @@ def _trim_profile_to_top_n(profile: str, n: int = 15) -> str:
 def build_body(
     repo: str,
     run_id: str,
-    artifact_url: str,
     summary_file: str,
     profile_file: str | None = None,
 ) -> str:
@@ -79,7 +78,6 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo", required=True, help="GitHub repository (owner/name)")
     parser.add_argument("--run-id", required=True, help="GitHub Actions run ID")
-    parser.add_argument("--artifact-url", required=True, help="Artifact download URL")
     parser.add_argument(
         "--summary-file", default="crash-summary.md", help="Crash summary markdown file"
     )
@@ -98,7 +96,6 @@ def main() -> None:
     body = build_body(
         args.repo,
         args.run_id,
-        args.artifact_url,
         args.summary_file,
         args.profile_file,
     )

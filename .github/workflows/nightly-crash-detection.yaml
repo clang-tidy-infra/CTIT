@@ -77,11 +77,9 @@ jobs:
           REPO: ${{ github.repository }}
           RUN_ID: ${{ github.run_id }}
         run: |
-          ARTIFACT_URL="https://github.com/$REPO/actions/runs/$RUN_ID/artifacts/1"
           python3 crash_detection/create_crash_issue.py \
             --repo "$REPO" \
             --run-id "$RUN_ID" \
-            --artifact-url "$ARTIFACT_URL" \
             --summary-file crash-summary.md \
             --profile-file profile-report.md \
             --output-file logs/issue.md
