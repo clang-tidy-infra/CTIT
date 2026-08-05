@@ -59,9 +59,7 @@ def build_body(
     summary = _read_file(summary_file)
     run_url = f"https://github.com/{repo}/actions/runs/{run_id}"
 
-    parts = [
-        f"Crashes detected in nightly all-checks run.\n\n" f"**Run:** {run_url}\n\n"
-    ]
+    parts = [f"Crashes detected in nightly all-checks run.\n\n**Run:** {run_url}\n\n"]
 
     parts.append(summary)
 

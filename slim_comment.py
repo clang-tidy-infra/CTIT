@@ -77,7 +77,8 @@ def main() -> None:
     args = parser.parse_args()
 
     try:
-        content = open(args.file).read()
+        with open(args.file) as file:
+            content = file.read()
     except OSError as e:
         print(f"Error reading {args.file}: {e}", file=sys.stderr)
         sys.exit(1)
