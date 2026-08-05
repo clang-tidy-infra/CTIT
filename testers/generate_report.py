@@ -152,8 +152,6 @@ def parse_log_file(log_path: str) -> ProjectResult:
 
     except OSError as e:
         print(f"Error reading {log_path}: {e}", file=sys.stderr)
-    except Exception as e:
-        print(f"Unexpected error parsing {log_path}: {e}", file=sys.stderr)
 
     return result
 

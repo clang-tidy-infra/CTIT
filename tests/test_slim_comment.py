@@ -135,6 +135,7 @@ class TestSlimCommentCLI(unittest.TestCase):
                 [sys.executable, "slim_comment.py", path, artifact_url],
                 capture_output=True,
                 text=True,
+                check=False,
             )
             result_content = ""
             if os.path.exists(path):
@@ -161,6 +162,7 @@ class TestSlimCommentCLI(unittest.TestCase):
             [sys.executable, "slim_comment.py", "/nonexistent/issue.md", ARTIFACT_URL],
             capture_output=True,
             text=True,
+            check=False,
         )
         self.assertNotEqual(proc.returncode, 0)
         self.assertIn("Error reading", proc.stderr)

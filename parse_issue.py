@@ -83,7 +83,7 @@ def main() -> None:
             f.write(f"PR_LINK<<EOF\n{result.pr_link}\nEOF\n")
             f.write(f"CHECK_NAME<<EOF\n{result.check_name}\nEOF\n")
             f.write(f"TIDY_CONFIG<<EOF\n{result.tidy_config}\nEOF\n")
-    except Exception as e:
+    except OSError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
