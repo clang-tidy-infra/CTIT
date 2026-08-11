@@ -150,6 +150,26 @@ jobs:
         run: |
           ./ctit.py report
 
+      - name: Run clang-tidy on clang test cases
+        run: >
+          ./ctit.py clang-tests
+          --check-name "${{ env.CHECK_NAME }}"
+          --clang-tidy-binary llvm-project/build/bin/clang-tidy
+          --llvm-dir llvm-project
+          --jobs "$(nproc)"
+          ${{ env.TIDY_CONFIG && format('--tidy-config "{0}"', env.TIDY_CONFIG) || '' }}
+
+      - name: Append clang test crashes to issue.md
+        if: github.event_name != 'workflow_dispatch'
+        run: |
+          if [ -f clang-tests.md ]; then
+            {
+              printf '\n<details>\n<summary><b>Clang Test Crashes</b> (click to expand)</summary>\n\n'
+              cat clang-tests.md
+              printf '\n</details>\n'
+            } >> issue.md
+          fi
+
       - name: Install Cursor CLI
         run: |
           curl https://cursor.com/install -fsS | bash
@@ -178,6 +198,7 @@ jobs:
             logs/
             issue.md
             report.md
+            clang-tests.md
 
       - name: Append AI analysis to issue.md
         if: github.event_name != 'workflow_dispatch'
