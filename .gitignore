@@ -10,6 +10,8 @@ venv/
 .ruff_cache
 logs/
 issue.md
+codechecker/.env
+codechecker/data/
 
 # Distribution/packaging
 develop-eggs/

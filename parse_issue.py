@@ -5,16 +5,23 @@ from dataclasses import dataclass
 from typing import Any
 
 
+TEST_FIXITS_TAG = "test-fixits"
+
+
 @dataclass
 class ParseResult:
     pr_link: str
     check_name: str
     tidy_config: str
+    test_fixits: bool = False
 
 
 def parse_body(body: str) -> ParseResult:
     """
     Parses the issue body to extract PR link, check name, and tidy configuration.
+
+    First line format: PR_URL CHECK_NAME [FLAGS...]
+    Supported flags: test-fixits
     """
     body = body.strip()
     if not body:
@@ -24,7 +31,7 @@ def parse_body(body: str) -> ParseResult:
     if not lines:
         raise ValueError("No valid lines found")
 
-    # Parse [PR_URL] [CHECK_NAME]
+    # Parse [PR_URL] [CHECK_NAME] [FLAGS...]
     first_line: str = lines[0]
     parts: list[str] = first_line.split()
     if len(parts) < 2:
@@ -32,6 +39,8 @@ def parse_body(body: str) -> ParseResult:
 
     pr_link: str = parts[0]
     check_name: str = parts[1]
+    flags: set[str] = {p.lower() for p in parts[2:]}
+    test_fixits: bool = TEST_FIXITS_TAG in flags
 
     # Parse options -- simple key and value
     check_options: dict[str, str] = {}
@@ -64,7 +73,12 @@ def parse_body(body: str) -> ParseResult:
         config_dict: dict[str, Any] = {"CheckOptions": check_options}
         tidy_config = json.dumps(config_dict)
 
-    return ParseResult(pr_link=pr_link, check_name=check_name, tidy_config=tidy_config)
+    return ParseResult(
+        pr_link=pr_link,
+        check_name=check_name,
+        tidy_config=tidy_config,
+        test_fixits=test_fixits,
+    )
 
 
 def main() -> None:
@@ -83,6 +97,8 @@ def main() -> None:
             f.write(f"PR_LINK<<EOF\n{result.pr_link}\nEOF\n")
             f.write(f"CHECK_NAME<<EOF\n{result.check_name}\nEOF\n")
             f.write(f"TIDY_CONFIG<<EOF\n{result.tidy_config}\nEOF\n")
+            if result.test_fixits:
+                f.write("TEST_FIXITS=true\n")
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)

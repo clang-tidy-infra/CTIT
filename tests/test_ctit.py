@@ -66,6 +66,7 @@ class TestCtitCli(unittest.TestCase):
             config_path=CONFIG_FILE,
             skip_headers=False,
             profile=False,
+            test_fixits=False,
         )
 
     @patch("ctit.analyze")
@@ -89,6 +90,7 @@ class TestCtitCli(unittest.TestCase):
             config_path=CONFIG_FILE,
             skip_headers=False,
             profile=False,
+            test_fixits=False,
         )
 
     @patch("ctit.analyze")
@@ -114,6 +116,23 @@ class TestCtitCli(unittest.TestCase):
             config_path=CONFIG_FILE,
             skip_headers=False,
             profile=False,
+            test_fixits=False,
+        )
+
+    @patch("ctit.analyze")
+    def test_analyze_with_test_fixits(self, mock_analyze):
+        main(["analyze", "--check-name", "modernize-use-ranges", "--test-fixits"])
+        mock_analyze.assert_called_once_with(
+            check_name="modernize-use-ranges",
+            tidy_config=None,
+            clang_tidy_bin=DEFAULT_CLANG_TIDY_BIN,
+            run_tidy_script=None,
+            work_dir=PROJECTS_DIR,
+            log_dir=DEFAULT_LOG_DIR,
+            config_path=CONFIG_FILE,
+            skip_headers=False,
+            profile=False,
+            test_fixits=True,
         )
 
     @patch("ctit.generate_report")

@@ -86,6 +86,32 @@ class TestParseIssue(unittest.TestCase):
             config["CheckOptions"],
         )
 
+    def test_test_fixits_flag(self):
+        body = "https://github.com/llvm/llvm-project/pull/123 modernize-use-ranges test-fixits"
+        result = parse_body(body)
+        self.assertTrue(result.test_fixits)
+        self.assertEqual(result.check_name, "modernize-use-ranges")
+
+    def test_test_fixits_flag_case_insensitive(self):
+        body = "https://github.com/llvm/llvm-project/pull/123 modernize-use-ranges TEST-FIXITS"
+        result = parse_body(body)
+        self.assertTrue(result.test_fixits)
+
+    def test_no_test_fixits_flag_by_default(self):
+        body = "https://github.com/llvm/llvm-project/pull/12345 bugprone-argument-comment"
+        result = parse_body(body)
+        self.assertFalse(result.test_fixits)
+
+    def test_test_fixits_with_options(self):
+        body = """
+        https://github.com/llvm/llvm-project/pull/123 readability-identifier-naming test-fixits
+        VariableCase: camelBack
+        """
+        result = parse_body(body)
+        self.assertTrue(result.test_fixits)
+        config = json.loads(result.tidy_config)
+        self.assertIn("readability-identifier-naming.VariableCase", config["CheckOptions"])
+
     def test_empty_body(self):
         with self.assertRaises(ValueError):
             parse_body("")

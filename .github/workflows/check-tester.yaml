@@ -16,6 +16,10 @@ on:
         description: 'Skip the AI false-positive analysis step'
         type: boolean
         default: false
+      test_fixits:
+        description: 'Apply fixits and recompile to verify they are correct'
+        type: boolean
+        default: false
   issues:
     types: labeled
   issue_comment:
@@ -28,7 +32,9 @@ jobs:
     if: >
       github.event_name == 'workflow_dispatch'
       || (github.event_name == 'issues'
-          && (github.event.label.name == 'cpp' || github.event.label.name == 'c'))
+          && (github.event.label.name == 'cpp'
+              || github.event.label.name == 'c'
+              || github.event.label.name == 'test-fixits'))
       || (github.event_name == 'issue_comment'
           && github.event.issue.pull_request == null
           && contains(github.event.comment.body, '/redo')
@@ -116,13 +122,21 @@ jobs:
               echo "${{ github.event.inputs.pr_link }} ${{ github.event.inputs.check_name }}"
               echo "${{ github.event.inputs.extra_config }}"
             } | python3 parse_issue.py $GITHUB_ENV
+            if [ "${{ github.event.inputs.test_fixits }}" = "true" ]; then
+              echo "TEST_FIXITS=true" >> "$GITHUB_ENV"
+            fi
           else
             echo "${{ github.event.issue.body }}" | python3 parse_issue.py $GITHUB_ENV
+            # test-fixits label trigger also enables fixit testing
+            if [ "${{ github.event.label.name }}" = "test-fixits" ]; then
+              echo "TEST_FIXITS=true" >> "$GITHUB_ENV"
+            fi
           fi
 
           echo "PR_LINK: $PR_LINK"
           echo "CHECK_NAME: $CHECK_NAME"
           echo "TIDY_CONFIG: $TIDY_CONFIG"
+          echo "TEST_FIXITS: $TEST_FIXITS"
 
       - name: Apply LLVM PR patch
         run: bash apply_patch.sh
@@ -145,6 +159,7 @@ jobs:
           --clang-tidy-binary llvm-project/build/bin/clang-tidy
           --run-tidy-script llvm-project/clang-tools-extra/clang-tidy/tool/run-clang-tidy.py
           ${{ env.TIDY_CONFIG && format('--tidy-config "{0}"', env.TIDY_CONFIG) || '' }}
+          ${{ env.TEST_FIXITS == 'true' && '--test-fixits' || '' }}
 
       - name: Generate warnings report
         run: |

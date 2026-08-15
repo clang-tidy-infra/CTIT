@@ -126,6 +126,22 @@ def build_project(build_dir: str, targets: list[str]) -> None:
     subprocess.run(["ninja", "-C", build_dir] + targets, check=True)
 
 
+def rebuild_after_fixits(build_dir: str, log_file: str) -> bool:
+    """Rebuild the project after applying fixits to detect miscompilation."""
+    result = subprocess.run(
+        ["ninja", "-C", build_dir],
+        capture_output=True,
+        text=True,
+    )
+    with open(log_file, "a") as f:
+        f.write("\n=== Rebuild after fixits ===\n")
+        f.write(result.stdout)
+        f.write(result.stderr)
+        status = "SUCCESS" if result.returncode == 0 else f"FAILED (exit {result.returncode})"
+        f.write(f"=== Rebuild {status} ===\n")
+    return result.returncode == 0
+
+
 def run_clang_tidy(
     clang_tidy_bin: str,
     run_tidy_script: str,
@@ -138,6 +154,7 @@ def run_clang_tidy(
     tidy_config: str | None,
     skip_headers: bool = False,
     profile: bool = False,
+    test_fixits: bool = False,
 ) -> None:
     """Run run-clang-tidy.py and save output to log file."""
     cmd = [
@@ -152,11 +169,15 @@ def run_clang_tidy(
         "-quiet",
     ]
 
-    if skip_headers:
+    # test-fixits mode always skips headers (avoid patching headers)
+    if skip_headers or test_fixits:
         cmd.append("-header-filter=")
 
     if profile:
         cmd.append("-enable-check-profile")
+
+    if test_fixits:
+        cmd.append("-fix")
 
     if tidy_config:
         cmd.append(f"-config={tidy_config}")
@@ -226,6 +247,7 @@ def analyze_project(
     tidy_config: str | None = None,
     skip_headers: bool = False,
     profile: bool = False,
+    test_fixits: bool = False,
 ) -> None:
     """Run clang-tidy analysis on a single project."""
     source_dir = os.path.abspath(source_dir)
@@ -246,7 +268,14 @@ def analyze_project(
         tidy_config,
         skip_headers,
         profile,
+        test_fixits,
     )
+
+    if test_fixits:
+        print(f"[{project.name}] Fixits applied. Rebuilding to check for miscompilation...")
+        success = rebuild_after_fixits(build_dir, log_file)
+        status = "SUCCESS" if success else "FAILED (miscompilation detected)"
+        print(f"[{project.name}] Rebuild after fixits: {status}")
 
     print(f"[{project.name}] Finished. Log saved to {log_file}")
 
@@ -261,6 +290,7 @@ def analyze(
     config_path: str = CONFIG_FILE,
     skip_headers: bool = False,
     profile: bool = False,
+    test_fixits: bool = False,
 ) -> None:
     """Run clang-tidy analysis on all configured projects."""
     if not shutil.which(clang_tidy_bin) and not os.path.isfile(clang_tidy_bin):
@@ -308,4 +338,5 @@ def analyze(
             tidy_config,
             skip_headers,
             profile,
+            test_fixits,
         )

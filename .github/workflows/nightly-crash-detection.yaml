@@ -101,3 +101,46 @@ jobs:
           gh issue create \
             --title "Nightly crash detection: crashes found $(date -u '+%Y-%m-%d %H:%M:%S')" \
             --body-file logs/issue.md
+
+      - name: Store reports in CodeChecker
+        if: always()
+        env:
+          CC_URL: ${{ secrets.CODECHECKER_URL }}
+          CC_TOKEN: ${{ secrets.CODECHECKER_API_TOKEN }}
+        run: |
+          python3 codechecker_integration/store_logs.py --log-dir logs/
+
+      - name: Compute diagnostic delta
+        id: delta
+        if: always()
+        env:
+          CC_URL: ${{ secrets.CODECHECKER_URL }}
+          CC_TOKEN: ${{ secrets.CODECHECKER_API_TOKEN }}
+        run: |
+          python3 codechecker_integration/diff_runs.py --output delta-report.md
+
+      - name: Generate delta issue markdown
+        if: steps.delta.outputs.has_new == 'true'
+        env:
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          python3 codechecker_integration/create_delta_issue.py \
+            --repo "$REPO" \
+            --run-id "$RUN_ID" \
+            --delta-file delta-report.md \
+            --output-file logs/delta-issue.md
+
+      - name: Create GitHub delta issue
+        if: steps.delta.outputs.has_new == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEW_COUNT: ${{ steps.delta.outputs.new_count }}
+          PROJECTS_WITH_NEW: ${{ steps.delta.outputs.projects_with_new }}
+        run: |
+          today=$(date -u '+%Y-%m-%d')
+          title="Nightly diagnostic delta: $NEW_COUNT new across $PROJECTS_WITH_NEW project(s) $today"
+          gh issue create \
+            --title "$title" \
+            --body-file logs/delta-issue.md \
+            --label "diagnostic-delta"

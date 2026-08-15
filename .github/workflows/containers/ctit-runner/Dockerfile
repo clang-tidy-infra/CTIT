@@ -11,6 +11,8 @@ RUN apt-get update && \
     mold \
     python3 \
     python3-dev \
+    python3-pip \
+    python3-venv \
     python-is-python3 \
     python3-argcomplete \
     python3-yaml \
@@ -49,6 +51,10 @@ RUN wget -qO- https://apt.llvm.org/llvm.sh | bash -s -- 21 && \
 ENV CC=clang-21
 ENV CXX=clang++-21
 ENV LLVM_USE_LINKER=mold
+
+# CodeChecker client (provides `report-converter` and the `CodeChecker` CLI)
+# used by the nightly workflow to push diagnostics to the historical server.
+RUN pip3 install --no-cache-dir --break-system-packages codechecker
 
 # Create a new user with id 1001 as that is the user id that
 # Github Actions uses to perform the checkout action.

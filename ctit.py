@@ -102,6 +102,15 @@ def main(argv: list[str] | None = None) -> None:
         default=False,
         help="Enable per-check timing profiles (appended to logs)",
     )
+    analyze_parser.add_argument(
+        "--test-fixits",
+        action="store_true",
+        default=False,
+        help=(
+            "Apply fixits and recompile each project to verify they are correct. "
+            "Implies --skip-headers."
+        ),
+    )
 
     report_parser = subparsers.add_parser(
         "report",
@@ -154,6 +163,7 @@ def main(argv: list[str] | None = None) -> None:
             config_path=args.config,
             skip_headers=args.skip_headers,
             profile=args.enable_check_profile,
+            test_fixits=args.test_fixits,
         )
     elif args.command == "report":
         generate_report(log_dir=args.log_dir, output=args.output)

@@ -12,6 +12,7 @@ from testers.analyze import (
     configure_cmake,
     configure_project,
     find_run_tidy_script,
+    rebuild_after_fixits,
     remove_clang_tidy_configs,
     run_clang_tidy,
     get_analysis_configs,
@@ -241,6 +242,98 @@ class TestRunClangTidy(unittest.TestCase):
                 content = f.read()
             self.assertEqual(content, "line1\nline2\n")
 
+    @patch("testers.analyze.subprocess.Popen")
+    def test_fixits_adds_fix_flag(self, mock_popen):
+        mock_popen.return_value = self._make_mock_proc([])
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            log_file = os.path.join(tmp_dir, "test.log")
+            progress_file = os.path.join(tmp_dir, "progress.log")
+            run_clang_tidy(
+                "/bin/ct",
+                "/script/rct.py",
+                "/build",
+                "check",
+                "/src",
+                None,
+                log_file,
+                progress_file,
+                None,
+                test_fixits=True,
+            )
+
+            args = mock_popen.call_args[0][0]
+            self.assertIn("-fix", args)
+            self.assertIn("-header-filter=", args)
+
+    @patch("testers.analyze.subprocess.Popen")
+    def test_fixits_implies_skip_headers(self, mock_popen):
+        mock_popen.return_value = self._make_mock_proc([])
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            log_file = os.path.join(tmp_dir, "test.log")
+            progress_file = os.path.join(tmp_dir, "progress.log")
+            # skip_headers=False but test_fixits=True — header filter must still be set
+            run_clang_tidy(
+                "/bin/ct",
+                "/script/rct.py",
+                "/build",
+                "check",
+                "/src",
+                None,
+                log_file,
+                progress_file,
+                None,
+                skip_headers=False,
+                test_fixits=True,
+            )
+
+            args = mock_popen.call_args[0][0]
+            self.assertIn("-header-filter=", args)
+
+
+class TestRebuildAfterFixits(unittest.TestCase):
+    @patch("testers.analyze.subprocess.run")
+    def test_returns_true_on_success(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            log_file = os.path.join(tmp_dir, "test.log")
+            open(log_file, "w").close()
+            result = rebuild_after_fixits("/build", log_file)
+            self.assertTrue(result)
+            args = mock_run.call_args[0][0]
+            self.assertEqual(args, ["ninja", "-C", "/build"])
+
+    @patch("testers.analyze.subprocess.run")
+    def test_returns_false_on_failure(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="error")
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            log_file = os.path.join(tmp_dir, "test.log")
+            open(log_file, "w").close()
+            result = rebuild_after_fixits("/build", log_file)
+            self.assertFalse(result)
+
+    @patch("testers.analyze.subprocess.run")
+    def test_appends_result_to_log(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=0, stdout="build ok\n", stderr="")
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            log_file = os.path.join(tmp_dir, "test.log")
+            open(log_file, "w").close()
+            rebuild_after_fixits("/build", log_file)
+            content = open(log_file).read()
+            self.assertIn("Rebuild after fixits", content)
+            self.assertIn("SUCCESS", content)
+            self.assertIn("build ok", content)
+
+    @patch("testers.analyze.subprocess.run")
+    def test_failure_logged(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=2, stdout="", stderr="fatal error\n")
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            log_file = os.path.join(tmp_dir, "test.log")
+            open(log_file, "w").close()
+            rebuild_after_fixits("/build", log_file)
+            content = open(log_file).read()
+            self.assertIn("FAILED", content)
+            self.assertIn("fatal error", content)
+
 
 class TestConfigureProject(unittest.TestCase):
     @patch("testers.analyze.build_project")
@@ -306,6 +399,58 @@ class TestAnalyzeProject(unittest.TestCase):
         )
 
         mock_tidy.assert_called_once()
+
+    @patch("testers.analyze.rebuild_after_fixits")
+    @patch("testers.analyze.run_clang_tidy")
+    def test_test_fixits_triggers_rebuild(self, mock_tidy, mock_rebuild):
+        mock_rebuild.return_value = True
+        project = Project(
+            name="cppcheck", url="https://example.com/p.git", commit="abc"
+        )
+        config = AnalysisConfig(name="cppcheck")
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            log_dir = os.path.join(tmp_dir, "logs")
+            os.makedirs(log_dir)
+            analyze_project(
+                project,
+                config,
+                tmp_dir,
+                "/bin/ct",
+                "/script/rct.py",
+                "check",
+                log_dir,
+                os.path.join(log_dir, "progress.log"),
+                test_fixits=True,
+            )
+
+        mock_tidy.assert_called_once()
+        mock_rebuild.assert_called_once()
+        # test_fixits should be forwarded to run_clang_tidy
+        _, kwargs = mock_tidy.call_args
+        self.assertTrue(kwargs.get("test_fixits") or mock_tidy.call_args[0][-1])
+
+    @patch("testers.analyze.rebuild_after_fixits")
+    @patch("testers.analyze.run_clang_tidy")
+    def test_no_rebuild_without_test_fixits(self, mock_tidy, mock_rebuild):
+        project = Project(
+            name="cppcheck", url="https://example.com/p.git", commit="abc"
+        )
+        config = AnalysisConfig(name="cppcheck")
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            log_dir = os.path.join(tmp_dir, "logs")
+            os.makedirs(log_dir)
+            analyze_project(
+                project,
+                config,
+                tmp_dir,
+                "/bin/ct",
+                "/script/rct.py",
+                "check",
+                log_dir,
+                os.path.join(log_dir, "progress.log"),
+            )
+
+        mock_rebuild.assert_not_called()
 
 
 class TestFindRunTidyScript(unittest.TestCase):
