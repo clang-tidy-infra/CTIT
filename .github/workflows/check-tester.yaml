@@ -167,7 +167,7 @@ jobs:
           clang-tidy warning. Edit it in place: replace the TBD cells in the \
           Verdict and Rationale columns and update the Summary line. Do not \
           touch columns 1-2 and 5 and do not add or remove rows. Follow AGENTS.md." \
-          --model auto
+          --model cursor-grok-4.6-high
 
       - name: Upload logs and reports
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
