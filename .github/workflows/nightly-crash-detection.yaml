@@ -39,6 +39,7 @@ jobs:
 
       - name: Select modified checks
         id: select-checks
+        shell: bash
         run: |
           set -euo pipefail
           CURRENT=$(git rev-parse HEAD:llvm-project)
