@@ -4,16 +4,10 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, edited]
 
-permissions:
-  pull-requests: read
+permissions: {}
 
 jobs:
   validate-pr-title:
-    timeout-minutes: 1
-    runs-on: ubuntu-24.04
-    steps:
-      - name: pr-title-lint
-        uses: ytanikin/pr-conventional-commits@639145d78959c53c43112365837e3abd21ed67c1 # 1.5.2
-        with:
-          task_types: '["feat","fix","docs","test","ci","refactor","perf","chore","revert"]'
-          add_label: 'false'
+    permissions:
+      pull-requests: read
+    uses: clang-tidy-infra/workflows/.github/workflows/pr-title-lint.yaml@b15c6951afee28ead3e089df43c3126e72845bb1 # v1.0.0
