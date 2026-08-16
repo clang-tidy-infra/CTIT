@@ -28,7 +28,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: true
-          fetch-depth: 1
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Prepare LLVM submodule
@@ -37,28 +37,66 @@ jobs:
           git -C llvm-project checkout .
           git -C llvm-project clean -fdx
 
+      - name: Select modified checks
+        id: select-checks
+        run: |
+          set -euo pipefail
+          CURRENT=$(git rev-parse HEAD:llvm-project)
+          BASE=""
+          while read -r commit; do
+            PIN=$(git rev-parse "${commit}:llvm-project")
+            if [[ "$PIN" != "$CURRENT" ]]; then
+              BASE=$PIN
+              break
+            fi
+          done < <(git rev-list --max-count=50 HEAD)
+
+          if [[ -z "$BASE" ]]; then
+            echo "No previous llvm-project pin in recent CTIT history."
+            echo "has_checks=false" >> "$GITHUB_OUTPUT"
+            echo "check_name=" >> "$GITHUB_OUTPUT"
+            echo "checks=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "llvm base: $BASE"
+          echo "llvm head: $CURRENT"
+          git -C llvm-project fetch --depth=1 origin "$BASE"
+          python3 crash_detection/select_modified_checks.py \
+            --llvm-dir llvm-project \
+            --base "$BASE" \
+            --head "$CURRENT"
+
       - name: Restore test-projects cache
+        if: steps.select-checks.outputs.has_checks == 'true'
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: test_projects
           key: test-projects-${{ hashFiles('testers/projects.json') }}
 
       - name: Clone test projects
+        if: steps.select-checks.outputs.has_checks == 'true'
         run: ./ctit.py clone --work-dir test_projects
 
       - name: Setup sccache
+        if: steps.select-checks.outputs.has_checks == 'true'
         uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
 
       - name: Build clang-tidy
+        if: steps.select-checks.outputs.has_checks == 'true'
         run: bash build.sh
 
       - name: Configure test projects
+        if: steps.select-checks.outputs.has_checks == 'true'
         run: ./ctit.py configure
 
-      - name: Run clang-tidy with all checks
+      - name: Run clang-tidy on modified checks
+        if: steps.select-checks.outputs.has_checks == 'true'
+        env:
+          CHECK_NAME: ${{ steps.select-checks.outputs.check_name }}
         run: >
           ./ctit.py analyze
-          --check-name "*,-clang-analyzer-*,-bugprone-unchecked-optional-access,-abseil-unchecked-statusor-access"
+          --check-name "$CHECK_NAME"
           --clang-tidy-binary llvm-project/build/bin/clang-tidy
           --run-tidy-script llvm-project/clang-tools-extra/clang-tidy/tool/run-clang-tidy.py
           --skip-headers
@@ -66,13 +104,17 @@ jobs:
 
       - name: Detect crashes
         id: detect-crashes
+        if: steps.select-checks.outputs.has_checks == 'true'
         run: python3 crash_detection/detect_crashes.py --log-dir logs/ --summary-file crash-summary.md
 
       - name: Parse check timings profile
+        if: steps.select-checks.outputs.has_checks == 'true'
         run: python3 crash_detection/parse_check_profile.py --log-dir logs/ --output profile-report.md
 
       - name: Generate crash issue markdown
-        if: steps.detect-crashes.outputs.crashes_found == 'true'
+        if: >
+          steps.select-checks.outputs.has_checks == 'true'
+          && steps.detect-crashes.outputs.crashes_found == 'true'
         env:
           REPO: ${{ github.repository }}
           RUN_ID: ${{ github.run_id }}
@@ -86,7 +128,7 @@ jobs:
 
       - name: Upload logs
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        if: always()
+        if: always() && steps.select-checks.outputs.has_checks == 'true'
         with:
           name: crash-detection-logs
           path: |
@@ -94,7 +136,9 @@ jobs:
             profile-report-detailed.md
 
       - name: Create GitHub issue
-        if: steps.detect-crashes.outputs.crashes_found == 'true'
+        if: >
+          steps.select-checks.outputs.has_checks == 'true'
+          && steps.detect-crashes.outputs.crashes_found == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
