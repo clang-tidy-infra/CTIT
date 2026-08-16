@@ -1,0 +1,25 @@
+name: Code lint
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**/*.py'
+      - 'pyproject.toml'
+      - '.github/workflows/*.yaml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '**/*.py'
+      - 'pyproject.toml'
+      - '.github/workflows/*.yaml'
+
+permissions: {}
+
+jobs:
+  code-lint:
+    permissions:
+      contents: read
+    uses: clang-tidy-infra/workflows/.github/workflows/python-code-lint.yaml@b15c6951afee28ead3e089df43c3126e72845bb1 # v1.0.0

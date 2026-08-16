@@ -1,0 +1,21 @@
+name: Github Actions lint
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/**'
+
+permissions: {}
+
+jobs:
+  actions-lint:
+    permissions:
+      contents: read
+    uses: clang-tidy-infra/workflows/.github/workflows/github-actions-lint.yaml@b15c6951afee28ead3e089df43c3126e72845bb1 # v1.0.0

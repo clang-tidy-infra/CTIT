@@ -1,0 +1,23 @@
+name: Yaml lint
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**/*.yaml'
+      - '**/*.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '**/*.yaml'
+      - '**/*.yml'
+
+permissions: {}
+
+jobs:
+  yaml-lint:
+    permissions:
+      contents: read
+    uses: clang-tidy-infra/workflows/.github/workflows/yaml-lint.yaml@b15c6951afee28ead3e089df43c3126e72845bb1 # v1.0.0

@@ -1,0 +1,23 @@
+name: Code formatter
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**/*.py'
+      - '.github/workflows/*.yaml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '**/*.py'
+      - '.github/workflows/*.yaml'
+
+permissions: {}
+
+jobs:
+  python-black-formatter:
+    permissions:
+      contents: read
+    uses: clang-tidy-infra/workflows/.github/workflows/python-code-format.yaml@b15c6951afee28ead3e089df43c3126e72845bb1 # v1.0.0
