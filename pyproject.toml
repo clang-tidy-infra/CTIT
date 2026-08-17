@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools==83.0.0", "wheel==0.47.0"]
+requires = ["setuptools==84.0.0", "wheel==0.47.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -13,7 +13,7 @@ authors = [
     {name = "Mitchell", email = "zeyi2@nekoarch.cc"},
 ]
 dependencies = [
-    "argcomplete==3.7.0",
+    "argcomplete==3.7.2",
 ]
 keywords = [
     "clang-tidy",
@@ -52,7 +52,7 @@ dev = [
     "shellcheck-py==0.11.0.1",
     "validate-pyproject[all]==0.25",
     "yamllint==1.38.0",
-    "ruff==0.16.1",
+    "ruff==0.16.2",
     "mypy==2.3.0",
     "zizmor==1.29.0",
 ]
