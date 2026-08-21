@@ -1,0 +1,17 @@
+name: Check for newline at end of file
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions: {}
+
+jobs:
+  eof-newline:
+    permissions:
+      contents: read
+    uses: clang-tidy-infra/workflows/.github/workflows/eof-newline-lint.yaml@b15c6951afee28ead3e089df43c3126e72845bb1 # v1.0.0

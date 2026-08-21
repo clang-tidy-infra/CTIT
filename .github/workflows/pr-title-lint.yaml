@@ -1,0 +1,13 @@
+name: Validate PR Title
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+permissions: {}
+
+jobs:
+  validate-pr-title:
+    permissions:
+      pull-requests: read
+    uses: clang-tidy-infra/workflows/.github/workflows/pr-title-lint.yaml@b15c6951afee28ead3e089df43c3126e72845bb1 # v1.0.0
