@@ -1,0 +1,77 @@
+name: Daily Check Timings
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  check-timings:
+    runs-on: self-hosted
+    container:
+      image: ghcr.io/clang-tidy-infra/ctit-runner:latest # zizmor: ignore[unpinned-images]
+      options: --user root
+    timeout-minutes: 360
+    permissions:
+      contents: read
+      packages: read
+
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      LLVM_SYMBOLIZER_PATH: ${{ github.workspace }}/llvm-project/build/bin/llvm-symbolizer
+
+    steps:
+      - name: Checkout CTIT
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: true
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Prepare LLVM submodule
+        run: |
+          git config --global --add safe.directory '*'
+          git -C llvm-project checkout .
+          git -C llvm-project clean -fdx
+
+      - name: Restore test-projects cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: test_projects
+          key: test-projects-${{ hashFiles('testers/projects.json') }}
+
+      - name: Clone test projects
+        run: ./ctit.py clone --work-dir test_projects
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
+
+      - name: Build clang-tidy
+        run: bash build.sh
+
+      - name: Configure test projects
+        run: ./ctit.py configure
+
+      - name: Run clang-tidy with all checks
+        run: >
+          ./ctit.py analyze
+          --check-name "*,-clang-analyzer-*,-bugprone-unchecked-optional-access,-abseil-unchecked-statusor-access"
+          --clang-tidy-binary llvm-project/build/bin/clang-tidy
+          --run-tidy-script llvm-project/clang-tools-extra/clang-tidy/tool/run-clang-tidy.py
+          --skip-headers
+          --enable-check-profile
+
+      - name: Parse check timings profile
+        run: python3 crash_detection/parse_check_profile.py --log-dir logs/ --output profile-report.md
+
+      - name: Upload check timings
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: check-timings
+          path: |
+            logs/
+            profile-report.md
+            profile-report-detailed.md
