@@ -101,16 +101,11 @@ jobs:
           --clang-tidy-binary llvm-project/build/bin/clang-tidy
           --run-tidy-script llvm-project/clang-tools-extra/clang-tidy/tool/run-clang-tidy.py
           --skip-headers
-          --enable-check-profile
 
       - name: Detect crashes
         id: detect-crashes
         if: steps.select-checks.outputs.has_checks == 'true'
         run: python3 crash_detection/detect_crashes.py --log-dir logs/ --summary-file crash-summary.md
-
-      - name: Parse check timings profile
-        if: steps.select-checks.outputs.has_checks == 'true'
-        run: python3 crash_detection/parse_check_profile.py --log-dir logs/ --output profile-report.md
 
       - name: Generate crash issue markdown
         if: >
@@ -124,7 +119,6 @@ jobs:
             --repo "$REPO" \
             --run-id "$RUN_ID" \
             --summary-file crash-summary.md \
-            --profile-file profile-report.md \
             --output-file logs/issue.md
 
       - name: Upload logs
@@ -132,9 +126,7 @@ jobs:
         if: always() && steps.select-checks.outputs.has_checks == 'true'
         with:
           name: crash-detection-logs
-          path: |
-            logs/
-            profile-report-detailed.md
+          path: logs/
 
       - name: Create GitHub issue
         if: >
