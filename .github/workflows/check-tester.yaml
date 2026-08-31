@@ -35,7 +35,8 @@ jobs:
           && (contains(github.event.issue.labels.*.name, 'cpp')
               || contains(github.event.issue.labels.*.name, 'c'))
           && (github.event.comment.author_association == 'OWNER'
-              || github.event.comment.author_association == 'MEMBER'))
+              || github.event.comment.author_association == 'MEMBER'
+              || github.event.comment.author_association == 'COLLABORATOR'))
     runs-on: ubuntu-latest
     timeout-minutes: 1
     outputs:
