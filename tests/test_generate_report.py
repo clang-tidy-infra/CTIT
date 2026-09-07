@@ -91,7 +91,10 @@ class TestParseLogFile(unittest.TestCase):
 
     def test_analysis_time_in_report(self):
         for seconds in (0.0, 123.456789):
-            with self.subTest(seconds=seconds), tempfile.TemporaryDirectory() as tmp_dir:
+            with (
+                self.subTest(seconds=seconds),
+                tempfile.TemporaryDirectory() as tmp_dir,
+            ):
                 path = self._write_log(
                     tmp_dir, "proj", f"CTIT analysis elapsed seconds: {seconds:.6f}\n"
                 )

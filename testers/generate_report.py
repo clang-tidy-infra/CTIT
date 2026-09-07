@@ -171,7 +171,9 @@ def write_summary_table(f: TextIO, results: list[ProjectResult]) -> None:
     for res in results:
         status_display = f"{res.status_emoji} {res.status_text}"
         crash_mark = "YES" if res.has_crash else "-"
-        elapsed = f"{res.elapsed_seconds:.2f}" if res.elapsed_seconds is not None else "—"
+        elapsed = (
+            f"{res.elapsed_seconds:.2f}" if res.elapsed_seconds is not None else "—"
+        )
         f.write(
             f"| **{res.name}** | {status_display} "
             f"| {res.warnings_count} | {res.errors_count} "
