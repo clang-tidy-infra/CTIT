@@ -87,6 +87,21 @@ class TestParseLogFile(unittest.TestCase):
             self.assertEqual(result.errors_count, 0)
             self.assertFalse(result.has_crash)
             self.assertEqual(result.issues, [])
+            self.assertIsNone(result.elapsed_seconds)
+
+    def test_analysis_time_in_report(self):
+        for seconds in (0.0, 123.456789):
+            with self.subTest(seconds=seconds), tempfile.TemporaryDirectory() as tmp_dir:
+                path = self._write_log(
+                    tmp_dir, "proj", f"CTIT analysis elapsed seconds: {seconds:.6f}\n"
+                )
+                result = parse_log_file(path)
+                self.assertEqual(result.elapsed_seconds, seconds)
+                self.assertEqual(result.issues, [])
+                output = io.StringIO()
+                write_summary_table(output, [result])
+                self.assertIn("Analysis time (s)", output.getvalue())
+                self.assertIn(f"| {seconds:.2f} |", output.getvalue())
 
     def test_single_warning(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -269,6 +284,7 @@ class TestWriteSummaryTable(unittest.TestCase):
         output = f.getvalue()
         self.assertIn("| **proj** |", output)
         self.assertIn("| 0 | 0 | - |", output)
+        self.assertIn("| — |", output)
 
     def test_project_with_crash(self):
         f = io.StringIO()

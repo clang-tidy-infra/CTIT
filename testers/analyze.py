@@ -5,6 +5,7 @@ import os
 import re
 import shutil
 import subprocess
+import time
 import sys
 from dataclasses import dataclass, field
 
@@ -166,6 +167,7 @@ def run_clang_tidy(
         cmd.append(full_regex)
 
     with open(log_file, "w") as log, open(progress_file, "a") as progress:
+        start = time.monotonic()
         proc = subprocess.Popen(
             cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
         )
@@ -177,6 +179,9 @@ def run_clang_tidy(
             else:
                 log.write(line)
         proc.wait()
+        elapsed = time.monotonic() - start
+        log.write(f"\nCTIT analysis elapsed seconds: {elapsed:.6f}\n")
+        print(f"Analysis time: {elapsed:.2f}s")
 
 
 def configure_project(
