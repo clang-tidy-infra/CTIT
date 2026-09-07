@@ -219,8 +219,9 @@ class TestRunClangTidy(unittest.TestCase):
             args = mock_popen.call_args[0][0]
             self.assertIn("-config=VariableCase: camelBack", args)
 
+    @patch("testers.analyze.time.monotonic", side_effect=[100.0, 112.345678])
     @patch("testers.analyze.subprocess.Popen")
-    def test_writes_log_file(self, mock_popen):
+    def test_writes_log_file(self, mock_popen, mock_clock):
         mock_popen.return_value = self._make_mock_proc(["line1\n", "line2\n"])
         with tempfile.TemporaryDirectory() as tmp_dir:
             log_file = os.path.join(tmp_dir, "test.log")
@@ -239,7 +240,10 @@ class TestRunClangTidy(unittest.TestCase):
 
             with open(log_file) as f:
                 content = f.read()
-            self.assertEqual(content, "line1\nline2\n")
+            self.assertEqual(
+                content,
+                "line1\nline2\n\nCTIT analysis elapsed seconds: 12.345678\n",
+            )
 
 
 class TestConfigureProject(unittest.TestCase):

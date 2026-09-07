@@ -34,6 +34,7 @@ class ProjectResult:
     errors_count: int = 0
     has_crash: bool = False
     issues: list[Issue] = field(default_factory=list)
+    elapsed_seconds: float | None = None
 
     @property
     def status_emoji(self) -> str:
@@ -107,6 +108,11 @@ def parse_log_file(log_path: str) -> ProjectResult:
         for i, line in enumerate(lines):
             line = line.strip()
 
+            timing = re.fullmatch(r"CTIT analysis elapsed seconds: (\d+\.\d+)", line)
+            if timing:
+                result.elapsed_seconds = float(timing.group(1))
+                continue
+
             # Check for tool crash indicators
             if "Segmentation fault" in line or "Stack dump:" in line:
                 result.has_crash = True
@@ -159,16 +165,19 @@ def parse_log_file(log_path: str) -> ProjectResult:
 def write_summary_table(f: TextIO, results: list[ProjectResult]) -> None:
     """Writes the high-level summary table to the markdown file."""
     f.write("### Clang-Tidy Integration Test Results\n\n")
-    f.write("| Project | Status | Warnings | Errors | Crash |\n")
-    f.write("| :--- | :--- | :--- | :--- | :--- |\n")
+    f.write("| Project | Status | Warnings | Errors | Crash | Full tidy time (s) |\n")
+    f.write("| :--- | :--- | :--- | :--- | :--- | ---: |\n")
 
     for res in results:
         status_display = f"{res.status_emoji} {res.status_text}"
         crash_mark = "YES" if res.has_crash else "-"
+        elapsed = (
+            f"{res.elapsed_seconds:.2f}" if res.elapsed_seconds is not None else "—"
+        )
         f.write(
             f"| **{res.name}** | {status_display} "
             f"| {res.warnings_count} | {res.errors_count} "
-            f"| {crash_mark} |\n"
+            f"| {crash_mark} | {elapsed} |\n"
         )
 
     f.write("\n---\n")
