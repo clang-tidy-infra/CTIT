@@ -4,7 +4,9 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+from crash_detection.detect_crashes import Crash
 from testers.generate_report import (
+    MAX_CRASH_EXAMPLES,
     Issue,
     ProjectResult,
     generate_markdown,
@@ -13,6 +15,14 @@ from testers.generate_report import (
     parse_log_file,
     write_project_details,
     write_summary_table,
+)
+
+STACK_DUMP = (
+    "PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/\n"
+    "Stack dump:\n"
+    "0.\tProgram arguments: clang-tidy foo.cpp\n"
+    "1.\t<eof> parser at end of file\n"
+    "2.\tASTMatcher: Processing 'bugprone-smart-ptr-initialization' against:\n"
 )
 
 
@@ -154,6 +164,34 @@ class TestParseLogFile(unittest.TestCase):
             path = self._write_log(tmp_dir, "proj", log)
             result = parse_log_file(path)
             self.assertTrue(result.has_crash)
+
+    def test_crash_context_is_captured(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            path = self._write_log(tmp_dir, "proj", STACK_DUMP)
+            result = parse_log_file(path)
+            self.assertTrue(result.has_crash)
+            self.assertEqual(len(result.crashes), 1)
+            self.assertEqual(
+                result.crashes[0].check, "bugprone-smart-ptr-initialization"
+            )
+            self.assertIn("Stack dump:\n", result.crashes[0].lines)
+
+    def test_crash_without_stack_dump(self):
+        for log in ("LLVM ERROR: out of memory\n", "Assertion `N' failed.\n"):
+            with self.subTest(log=log), tempfile.TemporaryDirectory() as tmp_dir:
+                path = self._write_log(tmp_dir, "proj", log)
+                result = parse_log_file(path)
+                self.assertTrue(result.has_crash)
+                self.assertEqual(len(result.crashes), 1)
+
+    def test_segfault_without_crash_context(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            path = self._write_log(
+                tmp_dir, "proj", "Segmentation fault (core dumped)\n"
+            )
+            result = parse_log_file(path)
+            self.assertTrue(result.has_crash)
+            self.assertEqual(result.crashes, [])
 
     def test_context_extraction(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -329,6 +367,50 @@ class TestWriteProjectDetails(unittest.TestCase):
         output = f.getvalue()
         self.assertIn("CRASH DETECTED", output)
         self.assertIn("<details>", output)
+
+    def test_crash_details_include_stack_dump(self):
+        f = io.StringIO()
+        result = ProjectResult(
+            name="proj",
+            has_crash=True,
+            crashes=[Crash(check="bugprone-x", lines=STACK_DUMP.splitlines(True))],
+        )
+        write_project_details(f, result, {})
+        output = f.getvalue()
+        self.assertIn("1 crash(es)", output)
+        self.assertIn("**`bugprone-x`**", output)
+        self.assertIn("Stack dump:", output)
+        self.assertIn("ASTMatcher: Processing", output)
+        # Nested <details> would break comment slimming.
+        self.assertEqual(output.count("<details>"), 1)
+
+    def test_crash_details_group_by_check(self):
+        f = io.StringIO()
+        crashes = [
+            Crash(check="check-a", lines=["Stack dump: a\n"]),
+            Crash(check="check-a", lines=["Stack dump: a again\n"]),
+            Crash(check="check-b", lines=["Stack dump: b\n"]),
+        ]
+        result = ProjectResult(name="proj", has_crash=True, crashes=crashes)
+        write_project_details(f, result, {})
+        output = f.getvalue()
+        self.assertIn("(3 crash(es))", output)
+        self.assertIn("**`check-a`** - 2 crash(es)", output)
+        self.assertIn("**`check-b`** - 1 crash(es)", output)
+        # Only the first occurrence of a check is shown.
+        self.assertNotIn("Stack dump: a again", output)
+
+    def test_crash_details_are_capped(self):
+        f = io.StringIO()
+        crashes = [
+            Crash(check=f"check-{i}", lines=[f"Stack dump: {i}\n"])
+            for i in range(MAX_CRASH_EXAMPLES + 2)
+        ]
+        result = ProjectResult(name="proj", has_crash=True, crashes=crashes)
+        write_project_details(f, result, {})
+        output = f.getvalue()
+        self.assertEqual(output.count("Stack dump:"), MAX_CRASH_EXAMPLES)
+        self.assertIn("and 2 more crashing check(s)", output)
 
     def test_warning_with_context(self):
         f = io.StringIO()
