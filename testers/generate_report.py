@@ -165,7 +165,7 @@ def parse_log_file(log_path: str) -> ProjectResult:
 def write_summary_table(f: TextIO, results: list[ProjectResult]) -> None:
     """Writes the high-level summary table to the markdown file."""
     f.write("### Clang-Tidy Integration Test Results\n\n")
-    f.write("| Project | Status | Warnings | Errors | Crash | Analysis time (s) |\n")
+    f.write("| Project | Status | Warnings | Errors | Crash | Full tidy time (s) |\n")
     f.write("| :--- | :--- | :--- | :--- | :--- | ---: |\n")
 
     for res in results:

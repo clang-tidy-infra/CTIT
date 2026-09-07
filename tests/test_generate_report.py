@@ -103,7 +103,7 @@ class TestParseLogFile(unittest.TestCase):
                 self.assertEqual(result.issues, [])
                 output = io.StringIO()
                 write_summary_table(output, [result])
-                self.assertIn("Analysis time (s)", output.getvalue())
+                self.assertIn("Full tidy time (s)", output.getvalue())
                 self.assertIn(f"| {seconds:.2f} |", output.getvalue())
 
     def test_single_warning(self):
