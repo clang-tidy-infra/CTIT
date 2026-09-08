@@ -59,7 +59,7 @@ dev = [
 
 [tool.setuptools]
 py-modules = ["ctit"]
-packages = ["testers"]
+packages = ["crash_detection", "testers"]
 
 [tool.setuptools.package-data]
 testers = ["projects.json"]

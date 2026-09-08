@@ -10,13 +10,69 @@ from dataclasses import dataclass, field
 CRASH_PATTERN = re.compile(
     r"Stack dump:|PLEASE submit a bug report to https|LLVM ERROR:|Assertion `"
 )
+# A killed process can print nothing but this, without any LLVM crash banner.
+SEGFAULT_PATTERN = re.compile(r"Segmentation fault")
 # Matches both stack dump items ("ASTMatcher: Processing '...' against:")
 # and any other "Processing '...' against" lines.
 _PROCESSING_PATTERN = re.compile(r"(?:Processing|Matching) '([^']+)' against")
 # Stack dump item 1 describes the phase when the crash occurred.
 _STACK_PHASE = re.compile(r"^\s*1\.\s+(.+)$")
-_MAX_CRASH_LINES = 30
+MAX_CRASH_LINES = 30
+UNKNOWN_CHECK = "unknown"
 _PREFERRED_PROJECT = "llvm-project"
+
+
+@dataclass
+class Crash:
+    """A single crash occurrence with the log lines that describe it."""
+
+    check: str
+    lines: list[str]
+
+
+def check_from_context(context: list[str]) -> str:
+    """Extract the crashing check name from the stack dump context.
+
+    Falls back to the stack dump phase (item 1) when no ASTMatcher check is
+    present, which happens for crashes during parsing or preprocessing.
+    """
+    for line in context:
+        m = _PROCESSING_PATTERN.search(line)
+        if m:
+            return m.group(1)
+    for line in context:
+        m = _STACK_PHASE.match(line)
+        if m:
+            return f"{UNKNOWN_CHECK} ({m.group(1).strip()})"
+    return UNKNOWN_CHECK
+
+
+def find_crashes_in_lines(lines: list[str]) -> list[Crash]:
+    """Return every crash found in *lines*, in the order they occurred.
+
+    Each crash keeps the log lines from its trigger up to MAX_CRASH_LINES,
+    which is what makes the report actionable: the stack dump names the file
+    and the check that blew up.
+    """
+    crashes: list[Crash] = []
+    i = 0
+    while i < len(lines):
+        if CRASH_PATTERN.search(lines[i]):
+            context = lines[i : i + MAX_CRASH_LINES]
+            crashes.append(Crash(check=check_from_context(context), lines=context))
+            i += len(context)
+        else:
+            i += 1
+
+    return crashes
+
+
+def group_by_check(crashes: list[Crash]) -> dict[str, list[Crash]]:
+    """Group crashes by the check they were attributed to."""
+    grouped: dict[str, list[Crash]] = {}
+    for crash in crashes:
+        grouped.setdefault(crash.check, []).append(crash)
+    return grouped
 
 
 @dataclass
@@ -32,30 +88,8 @@ class _CheckCrashes:
     examples: list[_CrashExample] = field(default_factory=list)
 
 
-def _capture_crash(lines: list[str], start: int) -> list[str]:
-    """Capture from the crash trigger line until the next progress line or limit."""
-    return lines[start : start + _MAX_CRASH_LINES]
-
-
-def _check_from_context(context: list[str]) -> str:
-    """Extract the crashing check name from the stack dump context.
-
-    Falls back to the stack dump phase (item 1) when no ASTMatcher check is
-    present, which happens for crashes during parsing or preprocessing.
-    """
-    for line in context:
-        m = _PROCESSING_PATTERN.search(line)
-        if m:
-            return m.group(1)
-    for line in context:
-        m = _STACK_PHASE.match(line)
-        if m:
-            return f"unknown ({m.group(1).strip()})"
-    return "unknown"
-
-
-def _parse_log(path: str, project: str) -> dict[str, list[list[str]]]:
-    """Return {check_name: [context_lines_per_crash]} for one log file."""
+def _parse_log(path: str) -> dict[str, list[Crash]]:
+    """Return {check_name: [crashes]} for one log file."""
     try:
         with open(path) as f:
             lines = f.readlines()
@@ -63,17 +97,9 @@ def _parse_log(path: str, project: str) -> dict[str, list[list[str]]]:
         print(f"Warning: could not read {path}: {e}", file=sys.stderr)
         return {}
 
-    result: dict[str, list[list[str]]] = {}
-    i = 0
-    while i < len(lines):
-        if CRASH_PATTERN.search(lines[i]):
-            context = _capture_crash(lines, i)
-            check = _check_from_context(context)
-            result.setdefault(check, []).append(context)
-            i += len(context)
-        else:
-            i += 1
-
+    result: dict[str, list[Crash]] = {}
+    for crash in find_crashes_in_lines(lines):
+        result.setdefault(crash.check, []).append(crash)
     return result
 
 
@@ -89,17 +115,16 @@ def find_crashes(log_dir: str) -> dict[str, _CheckCrashes]:
 
     for name in names:
         project = name[:-4]  # strip .log
-        per_check = _parse_log(os.path.join(log_dir, name), project)
+        per_check = _parse_log(os.path.join(log_dir, name))
         for check, occurrences in per_check.items():
             info = crashes.setdefault(check, _CheckCrashes())
             info.count += len(occurrences)
             # Keep only one example per project to avoid huge memory use.
             seen_projects = {ex.project for ex in info.examples}
-            for ctx in occurrences:
-                if project not in seen_projects:
-                    info.examples.append(_CrashExample(project=project, lines=ctx))
-                    seen_projects.add(project)
-                    break
+            if project not in seen_projects and occurrences:
+                info.examples.append(
+                    _CrashExample(project=project, lines=occurrences[0].lines)
+                )
 
     return crashes
 

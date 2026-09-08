@@ -6,10 +6,17 @@ import sys
 from dataclasses import dataclass, field
 from typing import TextIO
 
+from crash_detection.detect_crashes import (
+    Crash,
+    SEGFAULT_PATTERN,
+    find_crashes_in_lines,
+    group_by_check,
+)
 from testers.config import load_projects
 
 DEFAULT_LOG_DIR = "logs"
 DEFAULT_OUTPUT_FILE = "issue.md"
+MAX_CRASH_EXAMPLES = 3
 
 
 @dataclass
@@ -34,6 +41,7 @@ class ProjectResult:
     errors_count: int = 0
     has_crash: bool = False
     issues: list[Issue] = field(default_factory=list)
+    crashes: list[Crash] = field(default_factory=list)
     elapsed_seconds: float | None = None
 
     @property
@@ -105,6 +113,9 @@ def parse_log_file(log_path: str) -> ProjectResult:
         with open(log_path, errors="replace") as f:
             lines = f.readlines()
 
+        result.crashes = find_crashes_in_lines(lines)
+        result.has_crash = bool(result.crashes)
+
         for i, line in enumerate(lines):
             line = line.strip()
 
@@ -114,7 +125,7 @@ def parse_log_file(log_path: str) -> ProjectResult:
                 continue
 
             # Check for tool crash indicators
-            if "Segmentation fault" in line or "Stack dump:" in line:
+            if SEGFAULT_PATTERN.search(line):
                 result.has_crash = True
                 continue
 
@@ -194,7 +205,7 @@ def write_project_details(
     f.write(f"\n<details>\n<summary><strong>{summary_text}</strong></summary>\n\n")
 
     if result.has_crash:
-        f.write("🚨 **CRASH DETECTED** in this project!\n\n")
+        write_crash_details(f, result)
 
     base_url = project_urls.get(result.name)
 
@@ -214,6 +225,30 @@ def write_project_details(
             f.write(f"  ```cpp\n  {issue.context}\n  ```\n")
 
     f.write("\n</details>\n")
+
+
+def write_crash_details(f: TextIO, result: ProjectResult) -> None:
+    """Writes the crash banner and a stack dump excerpt per crashing check."""
+    total = len(result.crashes)
+    count_text = f" ({total} crash(es))" if total else ""
+    f.write(f"🚨 **CRASH DETECTED** in this project!{count_text}\n\n")
+
+    grouped = sorted(
+        group_by_check(result.crashes).items(), key=lambda item: -len(item[1])
+    )
+
+    for check, crashes in grouped[:MAX_CRASH_EXAMPLES]:
+        f.write(f"**`{check}`** - {len(crashes)} crash(es), first occurrence:\n\n")
+        f.write("```\n")
+        f.writelines(line.rstrip("\n") + "\n" for line in crashes[0].lines)
+        f.write("```\n\n")
+
+    remaining = len(grouped) - MAX_CRASH_EXAMPLES
+    if remaining > 0:
+        f.write(
+            f"_...and {remaining} more crashing check(s); "
+            "see the full logs in the workflow artifacts._\n\n"
+        )
 
 
 def write_ai_report_template(
