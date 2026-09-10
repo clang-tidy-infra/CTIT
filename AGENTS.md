@@ -41,6 +41,11 @@ warning**, in the same order as `issue.md`. Your job is to **edit it in place**:
 replace the `TBD` cells in the `Verdict` and `Rationale` columns, then update
 the `**Summary**` line counts at the bottom.
 
+If `issue.md` includes baseline results, analyze only the PR diagnostics listed
+in `report.md`. Baseline diagnostics are reference data and do not require
+separate verdicts. A warning also appearing in the baseline is not necessarily
+a true positive.
+
 Process rows top-to-bottom. For each row:
 
 1. **Read the warning** - the `Location` column links to the exact file:line in

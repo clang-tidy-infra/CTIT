@@ -544,6 +544,48 @@ class TestGenerateMarkdown(unittest.TestCase):
 
 
 class TestGenerateReport(unittest.TestCase):
+    def test_baseline_comparison_and_slimming(self):
+        from slim_comment import slim_comment
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            baseline = os.path.join(tmp_dir, "baseline")
+            os.mkdir(baseline)
+            for directory, message, elapsed in (
+                (tmp_dir, "PR warning", 2.0),
+                (baseline, "Baseline warning", 3.0),
+            ):
+                with open(os.path.join(directory, "proj.log"), "w") as f:
+                    f.write(
+                        f"/proj/a.cpp:1:1: warning: {message} [check]\n\n"
+                        f"CTIT analysis elapsed seconds: {elapsed:.6f}\n"
+                    )
+            output = os.path.join(tmp_dir, "issue.md")
+            generate_report(tmp_dir, output, baseline, "abc123")
+            with open(output) as f:
+                report = f.read()
+            self.assertIn("abc123", report)
+            self.assertIn("PR warning", report)
+            self.assertIn("Baseline warning", report)
+            self.assertIn("| 2.00 |", report)
+            self.assertIn("| 3.00 |", report)
+            oversized = report.replace("PR warning", "x" * 70000)
+            slimmed = slim_comment(oversized, "https://example.com/artifact")
+            self.assertIn("## PR results", slimmed)
+            self.assertIn("## Baseline results", slimmed)
+            self.assertIn("https://example.com/artifact", slimmed)
+            self.assertNotIn("Baseline warning", slimmed)
+
+    def test_unavailable_baseline(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            output = os.path.join(tmp_dir, "issue.md")
+            generate_markdown(
+                [ProjectResult(name="proj")], output, baseline_revision="abc123"
+            )
+            with open(output) as f:
+                report = f.read()
+            self.assertIn("Check unavailable in baseline", report)
+            self.assertNotIn("## Baseline results", report)
+
     def test_exits_when_log_dir_missing(self):
         with self.assertRaises(SystemExit) as ctx:
             generate_report("/nonexistent/logs", "out.md")

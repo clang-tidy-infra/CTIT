@@ -10,6 +10,7 @@ class ParseResult:
     pr_link: str
     check_name: str
     tidy_config: str
+    compare_baseline: bool = False
 
 
 def parse_body(body: str) -> ParseResult:
@@ -64,7 +65,12 @@ def parse_body(body: str) -> ParseResult:
         config_dict: dict[str, Any] = {"CheckOptions": check_options}
         tidy_config = json.dumps(config_dict)
 
-    return ParseResult(pr_link=pr_link, check_name=check_name, tidy_config=tidy_config)
+    return ParseResult(
+        pr_link=pr_link,
+        check_name=check_name,
+        tidy_config=tidy_config,
+        compare_baseline="/baseline" in lines[1:],
+    )
 
 
 def main() -> None:
@@ -83,6 +89,7 @@ def main() -> None:
             f.write(f"PR_LINK<<EOF\n{result.pr_link}\nEOF\n")
             f.write(f"CHECK_NAME<<EOF\n{result.check_name}\nEOF\n")
             f.write(f"TIDY_CONFIG<<EOF\n{result.tidy_config}\nEOF\n")
+            f.write(f"COMPARE_BASELINE={str(result.compare_baseline).lower()}\n")
     except OSError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)

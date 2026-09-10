@@ -118,6 +118,9 @@ def main(argv: list[str] | None = None) -> None:
         help=f"Output markdown file (default: {DEFAULT_OUTPUT_FILE})",
     )
 
+    report_parser.add_argument("--baseline-log-dir", help="Baseline analysis logs")
+    report_parser.add_argument("--baseline-revision", help="Unpatched LLVM revision")
+
     report_template_parser = subparsers.add_parser(
         "report-template",
         help="Generate the pre-filled FP-analysis template (report.md) for the AI to complete",
@@ -156,7 +159,12 @@ def main(argv: list[str] | None = None) -> None:
             profile=args.enable_check_profile,
         )
     elif args.command == "report":
-        generate_report(log_dir=args.log_dir, output=args.output)
+        generate_report(
+            log_dir=args.log_dir,
+            output=args.output,
+            baseline_log_dir=args.baseline_log_dir,
+            baseline_revision=args.baseline_revision,
+        )
     elif args.command == "report-template":
         generate_template(log_dir=args.log_dir, output=args.output)
 

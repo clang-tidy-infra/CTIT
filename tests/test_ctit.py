@@ -119,7 +119,28 @@ class TestCtitCli(unittest.TestCase):
     @patch("ctit.generate_report")
     def test_report_calls_generate_report(self, mock_report):
         main(["report", "--log-dir", "/tmp/logs", "--output", "/tmp/out.md"])
-        mock_report.assert_called_once_with(log_dir="/tmp/logs", output="/tmp/out.md")
+        mock_report.assert_called_once_with(
+            log_dir="/tmp/logs",
+            output="/tmp/out.md",
+            baseline_log_dir=None,
+            baseline_revision=None,
+        )
+
+    @patch("ctit.generate_report")
+    def test_report_with_baseline(self, mock_report):
+        main(
+            [
+                "report",
+                "--baseline-log-dir",
+                "logs/baseline",
+                "--baseline-revision",
+                "abc123",
+            ]
+        )
+        self.assertEqual(
+            mock_report.call_args.kwargs["baseline_log_dir"], "logs/baseline"
+        )
+        self.assertEqual(mock_report.call_args.kwargs["baseline_revision"], "abc123")
 
     def test_no_subcommand_exits_nonzero(self):
         with self.assertRaises(SystemExit) as ctx:
