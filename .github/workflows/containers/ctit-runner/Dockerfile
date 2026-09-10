@@ -42,7 +42,9 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-RUN wget -qO- https://apt.llvm.org/llvm.sh | bash -s -- 21 && \
+RUN curl -fSL --retry 3 https://apt.llvm.org/llvm.sh -o /tmp/llvm.sh && \
+    bash /tmp/llvm.sh 21 && \
+    rm /tmp/llvm.sh && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
