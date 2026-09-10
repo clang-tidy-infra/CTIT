@@ -256,6 +256,8 @@ def generate_markdown(
     results: list[ProjectResult],
     output_path: str,
     project_urls: dict[str, str] | None = None,
+    baseline_results: list[ProjectResult] | None = None,
+    baseline_revision: str | None = None,
 ) -> None:
     """Writes the human-facing warnings report (issue.md)."""
     if project_urls is None:
@@ -263,9 +265,25 @@ def generate_markdown(
 
     try:
         with open(output_path, "w") as f:
+            if baseline_revision:
+                f.write(f"Baseline LLVM revision: `{baseline_revision}`\n\n")
+                if baseline_results is None:
+                    f.write(
+                        "Check unavailable in baseline; baseline analysis skipped.\n\n"
+                    )
+            if baseline_results is not None:
+                f.write("## PR results\n\n")
             write_summary_table(f, results)
+            if baseline_results is not None:
+                f.write("## Baseline results\n\n")
+                write_summary_table(f, baseline_results)
+                f.write("## PR diagnostics\n\n")
             for res in results:
                 write_project_details(f, res, project_urls)
+            if baseline_results is not None:
+                f.write("## Baseline diagnostics\n\n")
+                for res in baseline_results:
+                    write_project_details(f, res, project_urls)
         print(f"Report generated: {output_path}")
     except OSError as e:
         print(f"Error writing report to {output_path}: {e}", file=sys.stderr)
@@ -296,9 +314,19 @@ def _load_results(log_dir: str) -> tuple[list[ProjectResult], dict[str, str]]:
     return results, project_urls
 
 
-def generate_report(log_dir: str, output: str) -> None:
+def generate_report(
+    log_dir: str,
+    output: str,
+    baseline_log_dir: str | None = None,
+    baseline_revision: str | None = None,
+) -> None:
     results, project_urls = _load_results(log_dir)
-    generate_markdown(results, output, project_urls)
+    baseline_results = None
+    if baseline_log_dir is not None:
+        baseline_results, _ = _load_results(baseline_log_dir)
+    generate_markdown(
+        results, output, project_urls, baseline_results, baseline_revision
+    )
 
 
 def generate_template(log_dir: str, output: str) -> None:

@@ -15,6 +15,18 @@ class TestParseIssue(unittest.TestCase):
         )
         self.assertEqual(result.check_name, "bugprone-argument-comment")
         self.assertEqual(result.tidy_config, "")
+        self.assertFalse(result.compare_baseline)
+
+    def test_baseline_opt_in(self):
+        result = parse_body("https://example.com/pr check\n /baseline \nOption: true")
+        self.assertTrue(result.compare_baseline)
+        self.assertEqual(
+            json.loads(result.tidy_config), {"CheckOptions": {"check.Option": "true"}}
+        )
+
+    def test_baseline_requires_standalone_directive(self):
+        result = parse_body("https://example.com/pr check\nOption: /baseline")
+        self.assertFalse(result.compare_baseline)
 
     def test_readability_naming_options(self):
         body = """

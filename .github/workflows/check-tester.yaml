@@ -16,6 +16,10 @@ on:
         description: 'Skip the AI false-positive analysis step'
         type: boolean
         default: false
+      compare_baseline:
+        description: 'Compare against the unpatched LLVM submodule'
+        type: boolean
+        default: false
   issues:
     types: labeled
   issue_comment:
@@ -116,6 +120,9 @@ jobs:
             {
               echo "${{ github.event.inputs.pr_link }} ${{ github.event.inputs.check_name }}"
               echo "${{ github.event.inputs.extra_config }}"
+              if [ "${{ inputs.compare_baseline }}" = true ]; then
+                echo /baseline
+              fi
             } | python3 parse_issue.py $GITHUB_ENV
           else
             echo "${{ github.event.issue.body }}" | python3 parse_issue.py $GITHUB_ENV
@@ -125,31 +132,60 @@ jobs:
           echo "CHECK_NAME: $CHECK_NAME"
           echo "TIDY_CONFIG: $TIDY_CONFIG"
 
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
+
+      - name: Build baseline clang-tidy
+        if: env.COMPARE_BASELINE == 'true'
+        run: bash build.sh
+
+      - name: Configure test projects
+        run: ./ctit.py configure
+
+      - name: Save analysis runner
+        run: |
+          mkdir -p logs
+          cp llvm-project/clang-tools-extra/clang-tidy/tool/run-clang-tidy.py logs/run-clang-tidy.py
+
+      - name: Run baseline when check exists
+        if: env.COMPARE_BASELINE == 'true'
+        run: |
+          llvm-project/build/bin/clang-tidy --list-checks --checks='*' > logs/baseline-checks.txt
+          if sed 's/^[[:space:]]*//' logs/baseline-checks.txt | grep -Fx -- "$CHECK_NAME" > /dev/null; then
+            ./ctit.py analyze --check-name "$CHECK_NAME" \
+              --clang-tidy-binary llvm-project/build/bin/clang-tidy \
+              --run-tidy-script logs/run-clang-tidy.py \
+              --log-dir logs/baseline --tidy-config "$TIDY_CONFIG"
+            echo "HAS_BASELINE=true" >> "$GITHUB_ENV"
+          fi
+
       - name: Apply LLVM PR patch
         run: bash apply_patch.sh
         env:
           GITHUB_PATCH_ID: ${{ env.PR_LINK }}
 
-      - name: Setup sccache
-        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
-
       - name: Build patched clang-tidy
         run: bash build.sh
-
-      - name: Configure test projects
-        run: ./ctit.py configure
 
       - name: Run clang-tidy on test projects
         run: >
           ./ctit.py analyze
           --check-name "${{ env.CHECK_NAME }}"
           --clang-tidy-binary llvm-project/build/bin/clang-tidy
-          --run-tidy-script llvm-project/clang-tools-extra/clang-tidy/tool/run-clang-tidy.py
+          --run-tidy-script logs/run-clang-tidy.py
           ${{ env.TIDY_CONFIG && format('--tidy-config "{0}"', env.TIDY_CONFIG) || '' }}
 
       - name: Generate warnings report
+        shell: bash
         run: |
-          ./ctit.py report
+          args=()
+          if [ "$COMPARE_BASELINE" = true ]; then
+            args+=(--baseline-revision "$LLVM_REVISION")
+          fi
+          if [ "${HAS_BASELINE:-}" = true ]; then
+            args+=(--baseline-log-dir logs/baseline)
+          fi
+          ./ctit.py report "${args[@]}"
 
       - name: Install Cursor CLI
         run: |
