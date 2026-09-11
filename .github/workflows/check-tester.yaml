@@ -72,6 +72,10 @@ jobs:
       LLVM_SYMBOLIZER_PATH: ${{ github.workspace }}/llvm-project/build/bin/llvm-symbolizer
 
     steps:
+      - name: Record CTIT start time
+        run: |
+          echo "CTIT_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+
       - name: Acknowledge trigger
         if: github.event_name != 'workflow_dispatch'
         env:
@@ -104,6 +108,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git -C llvm-project checkout .
           git -C llvm-project clean -fdx
+          echo "LLVM_REVISION=$(git -C llvm-project rev-parse HEAD)" >> "$GITHUB_ENV"
 
       - name: Restore test-projects cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -207,6 +212,7 @@ jobs:
           --model cursor-grok-4.6-high
 
       - name: Upload logs and reports
+        if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         id: artifact
         with:
@@ -215,6 +221,40 @@ jobs:
             logs/
             issue.md
             report.md
+
+      - name: Generate public run result
+        if: always()
+        env:
+          ARTIFACT_URL: ${{ steps.artifact.outputs.artifact-url }}
+          JOB_STATUS: ${{ job.status }}
+        run: python3 -m testers.result
+
+      - name: Checkout public results repository
+        if: always() && hashFiles('ctit-result.json') != '' && vars.CTIT_RESULTS_REPOSITORY != ''
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ vars.CTIT_RESULTS_REPOSITORY }}
+          token: ${{ secrets.CTIT_RESULTS_TOKEN }}
+          path: ctit-results
+          persist-credentials: false
+
+      - name: Publish public run result
+        if: always() && hashFiles('ctit-result.json') != '' && vars.CTIT_RESULTS_REPOSITORY != ''
+        working-directory: ctit-results
+        env:
+          GH_TOKEN: ${{ secrets.CTIT_RESULTS_TOKEN }}
+        run: |
+          PR_NUMBER=$(python3 -c 'import json; print(json.load(open("../ctit-result.json"))["pr_number"])')
+          RESULT_PATH="runs/$(date -u +%Y/%m)/pr-$PR_NUMBER-${{ github.run_id }}-${{ github.run_attempt }}-${{ runner.arch }}.json"
+          mkdir -p "$(dirname "$RESULT_PATH")"
+          cp ../ctit-result.json "$RESULT_PATH"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          gh auth setup-git
+          git add "$RESULT_PATH"
+          git commit -m "result: run ${{ github.run_id }} attempt ${{ github.run_attempt }} ${{ runner.arch }}"
+          git pull --rebase
+          git push
 
       - name: Append AI analysis to issue.md
         if: github.event_name != 'workflow_dispatch'
