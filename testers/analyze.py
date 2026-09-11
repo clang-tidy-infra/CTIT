@@ -153,6 +153,10 @@ def run_clang_tidy(
         "-quiet",
     ]
 
+    jobs = os.environ.get("CTIT_JOBS")
+    if jobs:
+        cmd.extend(["-j", jobs])
+
     if skip_headers:
         cmd.append("-header-filter=")
 
