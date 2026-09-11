@@ -44,6 +44,10 @@ cmake -G Ninja \
     "${CMAKE_EXTRA_ARGS[@]}"
 
 echo "Building clang-tidy and llvm-symbolizer"
-ninja -C "$BUILD_DIR" clang-tidy llvm-symbolizer
+if [ -n "${CTIT_JOBS:-}" ]; then
+    ninja -j "$CTIT_JOBS" -C "$BUILD_DIR" clang-tidy llvm-symbolizer
+else
+    ninja -C "$BUILD_DIR" clang-tidy llvm-symbolizer
+fi
 
 echo "Build completed successfully!"

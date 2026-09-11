@@ -140,6 +140,10 @@ jobs:
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
 
+      - name: Limit ARM64 concurrency
+        if: runner.arch == 'ARM64'
+        run: echo "CTIT_JOBS=48" >> "$GITHUB_ENV"
+
       - name: Build baseline clang-tidy
         if: env.COMPARE_BASELINE == 'true'
         run: bash build.sh

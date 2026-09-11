@@ -177,6 +177,27 @@ class TestRunClangTidy(unittest.TestCase):
             self.assertIn("-quiet", args)
             self.assertNotIn("/src", " ".join(args))
 
+    @patch.dict(os.environ, {"CTIT_JOBS": "32"})
+    @patch("testers.analyze.subprocess.Popen")
+    def test_limits_parallel_jobs_from_environment(self, mock_popen):
+        mock_popen.return_value = self._make_mock_proc([])
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            run_clang_tidy(
+                "/bin/clang-tidy",
+                "/script/run-clang-tidy.py",
+                "/build",
+                "check",
+                "/src",
+                None,
+                os.path.join(tmp_dir, "test.log"),
+                os.path.join(tmp_dir, "progress.log"),
+                None,
+            )
+
+        args = mock_popen.call_args[0][0]
+        self.assertIn("-j", args)
+        self.assertEqual(args[args.index("-j") + 1], "32")
+
     @patch("testers.analyze.subprocess.Popen")
     def test_with_file_regex(self, mock_popen):
         mock_popen.return_value = self._make_mock_proc([])
