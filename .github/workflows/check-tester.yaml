@@ -51,7 +51,7 @@ jobs:
         uses: mikehardy/runner-fallback-action@dc7732f9e532c451b2527b288ba8d58fd4b0a4ca # v1.1.0
         with:
           primary-runner: "self-hosted"
-          fallback-runner: "ubuntu-latest"
+          fallback-runner: "self-hosted"
           github-token: ${{ secrets.RUNNER_ACCESS_TOKEN }}
 
   run-analysis:
