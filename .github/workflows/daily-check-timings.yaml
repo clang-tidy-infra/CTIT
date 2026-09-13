@@ -9,7 +9,7 @@ permissions: {}
 
 jobs:
   check-timings:
-    runs-on: self-hosted
+    runs-on: ARM64
     container:
       image: ghcr.io/clang-tidy-infra/ctit-runner:latest # zizmor: ignore[unpinned-images]
       options: --user root
