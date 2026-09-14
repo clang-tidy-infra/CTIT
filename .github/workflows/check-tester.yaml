@@ -28,7 +28,7 @@ on:
 permissions: {}
 
 jobs:
-  determine-runner:
+  authorize-trigger:
     if: >
       github.event_name == 'workflow_dispatch'
       || (github.event_name == 'issues'
@@ -37,10 +37,55 @@ jobs:
           && github.event.issue.pull_request == null
           && contains(github.event.comment.body, '/redo')
           && (contains(github.event.issue.labels.*.name, 'cpp')
-              || contains(github.event.issue.labels.*.name, 'c'))
-          && (github.event.comment.author_association == 'OWNER'
-              || github.event.comment.author_association == 'MEMBER'
-              || github.event.comment.author_association == 'COLLABORATOR'))
+              || contains(github.event.issue.labels.*.name, 'c')))
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    permissions:
+      issues: write
+    outputs:
+      authorized: ${{ steps.authorize.outputs.authorized }}
+    steps:
+      - name: Check LLVM commit access
+        id: authorize
+        env:
+          COMMENT_TOKEN: ${{ github.token }}
+          COMMENT_AUTHOR: ${{ github.event.comment.user.login }}
+          EVENT_NAME: ${{ github.event_name }}
+          ISSUE_AUTHOR: ${{ github.event.issue.user.login }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          LLVM_PERMISSION_TOKEN: ${{ secrets.RUNNER_ACCESS_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          case "$EVENT_NAME" in
+            issues)
+              requester="$ISSUE_AUTHOR"
+              ;;
+            issue_comment)
+              requester="$COMMENT_AUTHOR"
+              ;;
+            workflow_dispatch)
+              echo "authorized=true" >> "$GITHUB_OUTPUT"
+              exit
+              ;;
+          esac
+
+          if permission=$(GH_TOKEN="$LLVM_PERMISSION_TOKEN" gh api \
+            "repos/llvm/llvm-project/collaborators/$requester/permission" \
+            --jq '.user.permissions.push'); then
+            if [ "$permission" = true ]; then
+              echo "authorized=true" >> "$GITHUB_OUTPUT"
+              exit
+            fi
+          fi
+
+          message="CTIT could not confirm that @$requester has commit access to llvm/llvm-project, so this run was not started. Please ask a clang-tidy maintainer or reviewer with commit access to comment \`/redo\` on this issue to request the run for you."
+          echo "authorized=false" >> "$GITHUB_OUTPUT"
+          GH_TOKEN="$COMMENT_TOKEN" gh api --method POST \
+            "repos/$REPOSITORY/issues/$ISSUE_NUMBER/comments" -f body="$message"
+
+  determine-runner:
+    needs: authorize-trigger
+    if: needs.authorize-trigger.outputs.authorized == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 1
     outputs:
