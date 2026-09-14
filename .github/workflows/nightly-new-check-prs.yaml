@@ -1,0 +1,31 @@
+name: Nightly New Check PRs
+
+on:
+  workflow_dispatch:
+    inputs:
+      since_hours:
+        description: 'Activity window in hours'
+        default: '24'
+      limit:
+        description: 'Maximum analysis runs to trigger'
+        default: '10'
+      include_drafts:
+        description: 'Also consider draft pull requests'
+        type: boolean
+        default: false
+      dry_run:
+        description: 'Report the plan without creating issues or comments'
+        type: boolean
+        default: false
+
+permissions: {}
+
+jobs:
+  placeholder:
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - name: Explain the placeholder
+        run: |
+          echo "This is the placeholder on the default branch; it does nothing."
+          echo "Run this workflow against the branch that implements it."
