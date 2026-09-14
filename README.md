@@ -34,6 +34,15 @@ This service is inspired by [Yingwei Zheng (dtcxzyw)'s llvm-fuzz-service](https:
    - Run the integration tests on supported projects.
    - Post a report comment back to the issue.
 
+### Automatic upstream polling
+
+A scheduled workflow (`poll-upstream-prs.yaml`) runs hourly and auto-files
+issues for new-check PRs opened upstream at `llvm/llvm-project` within the
+last week. It looks for PR titles of the form *"[clang-tidy] Add X check"*
+and confirms by inspecting the changed files. Issues filed this way are
+labeled `cpp` and flow through the normal pipeline above. Duplicates are
+suppressed by searching existing CTIT issues for the PR URL.
+
 ## Projects
 
 - [Cppcheck](https://github.com/danmar/cppcheck)

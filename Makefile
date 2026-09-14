@@ -20,6 +20,7 @@ activate:
 test:
 	@echo "Running tests..."
 	venv/bin/python3 -m unittest discover -s tests -v
+	venv/bin/python3 -m unittest discover -s .github/scripts -v
   
 format:
 	@echo "Formatting Python files..."
