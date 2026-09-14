@@ -134,8 +134,9 @@ jobs:
           if [ "$EVENT_NAME" = "issue_comment" ]; then
             gh api repos/$REPO/issues/comments/$COMMENT_ID/reactions -f content="eyes"
           fi
+          BODY=$(printf '<!-- ctit-run -->\n\nRun started: https://github.com/%s/actions/runs/%s' "$REPO" "$RUN_ID")
           REPORT_COMMENT_ID=$(gh api repos/$REPO/issues/$ISSUE_NUMBER/comments \
-            -f body="Run started: https://github.com/$REPO/actions/runs/$RUN_ID" \
+            -f body="$BODY" \
             --jq '.id')
           echo "REPORT_COMMENT_ID=$REPORT_COMMENT_ID" >> "$GITHUB_ENV"
 
@@ -212,6 +213,21 @@ jobs:
               --log-dir logs/baseline --tidy-config "$TIDY_CONFIG"
             echo "HAS_BASELINE=true" >> "$GITHUB_ENV"
           fi
+
+      - name: Resolve analyzed PR revision
+        if: github.event_name != 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER=${PR_LINK%/}
+          PR_NUMBER=${PR_NUMBER##*/}
+          case "$PR_NUMBER" in
+            '' | *[!0-9]*)
+              echo "PR_LINK has no pull request number; revision not recorded"
+              exit 0
+              ;;
+          esac
+          echo "PR_HEAD_SHA=$(gh api "repos/llvm/llvm-project/pulls/$PR_NUMBER" --jq '.head.sha')" >> "$GITHUB_ENV"
 
       - name: Apply LLVM PR patch
         run: bash apply_patch.sh
@@ -316,9 +332,14 @@ jobs:
             } >> issue.md
           fi
 
-      - name: Slim issue.md for comment
+      - name: Prepare issue comment
         if: github.event_name != 'workflow_dispatch'
-        run: python3 slim_comment.py issue.md "${{ steps.artifact.outputs.artifact-url }}"
+        run: |
+          if [ -n "${PR_HEAD_SHA:-}" ]; then
+            printf '<!-- ctit-run sha=%s -->\n\n' "$PR_HEAD_SHA" | cat - issue.md > issue.tmp
+            mv issue.tmp issue.md
+          fi
+          python3 slim_comment.py issue.md "${{ steps.artifact.outputs.artifact-url }}"
 
       - name: Comment results on issue
         if: github.event_name != 'workflow_dispatch'

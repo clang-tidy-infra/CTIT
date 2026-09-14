@@ -1,6 +1,8 @@
-name: Nightly New Check PRs
+name: Nightly New Checks Analysis
 
 on:
+  schedule:
+    - cron: '0 1 * * *'
   workflow_dispatch:
     inputs:
       since_hours:
@@ -10,22 +12,73 @@ on:
         description: 'Maximum analysis runs to trigger'
         default: '10'
       include_drafts:
-        description: 'Also consider draft pull requests'
+        description: 'Include draft pull requests'
         type: boolean
         default: false
       dry_run:
-        description: 'Report the plan without creating issues or comments'
+        description: 'Dry run without creating issues or comments'
         type: boolean
         default: false
 
 permissions: {}
 
 jobs:
-  placeholder:
+  trigger-new-check-tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 1
+    timeout-minutes: 30
+    permissions:
+      contents: read
+
+    env:
+      SINCE_HOURS: ${{ inputs.since_hours }}
+
     steps:
-      - name: Explain the placeholder
+      - name: Checkout CTIT
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Find pull requests adding new clang-tidy checks
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          INCLUDE_DRAFTS: ${{ inputs.include_drafts && 'true' || 'false' }}
         run: |
-          echo "This is the placeholder on the default branch; it does nothing."
-          echo "Run this workflow against the branch that implements it."
+          args=(--since-hours "${SINCE_HOURS:-24}" --output new-check-prs.json)
+          if [ "$INCLUDE_DRAFTS" = true ]; then
+            args+=(--include-drafts)
+          fi
+          python3 -m pr_watch.find_new_check_prs "${args[@]}"
+
+      - name: Open or refresh CTIT issues
+        env:
+          GITHUB_TOKEN: ${{ secrets.NIGHTLY_TRIGGER_TOKEN }}
+          REPO: ${{ github.repository }}
+          LIMIT: ${{ inputs.limit }}
+          DRY_RUN: ${{ inputs.dry_run && 'true' || 'false' }}
+        run: |
+          args=(
+            --repo "$REPO"
+            --targets new-check-prs.json
+            --limit "${LIMIT:-10}"
+            --since-hours "${SINCE_HOURS:-24}"
+            --summary-file nightly-summary.md
+          )
+          if [ "$DRY_RUN" = true ]; then
+            args+=(--dry-run)
+          fi
+          python3 -m pr_watch.sync_issues "${args[@]}"
+
+      - name: Create job summary
+        if: always() && hashFiles('nightly-summary.md') != ''
+        run: cat nightly-summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload summary
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: nightly-new-check-prs
+          path: |
+            new-check-prs.json
+            nightly-summary.md
+          if-no-files-found: ignore
