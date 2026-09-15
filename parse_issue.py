@@ -13,9 +13,13 @@ class ParseResult:
     compare_baseline: bool = False
 
 
+def _looks_like_pr_link(token: str) -> bool:
+    return "://" in token or token.startswith("github.com/")
+
+
 def parse_body(body: str) -> ParseResult:
     """
-    Parses the issue body to extract PR link, check name, and tidy configuration.
+    Parses the issue body to extract PR link (optional), check name, and tidy configuration.
     """
     body = body.strip()
     if not body:
@@ -28,11 +32,14 @@ def parse_body(body: str) -> ParseResult:
     # Parse [PR_URL] [CHECK_NAME]
     first_line: str = lines[0]
     parts: list[str] = first_line.split()
-    if len(parts) < 2:
-        raise ValueError("First line must contain PR_URL and CHECK_NAME")
+    pr_link: str = ""
+    if _looks_like_pr_link(parts[0]):
+        pr_link = parts[0]
+        parts = parts[1:]
+    if not parts:
+        raise ValueError("First line must contain CHECK_NAME, optionally after PR_URL")
 
-    pr_link: str = parts[0]
-    check_name: str = parts[1]
+    check_name: str = parts[0]
 
     # Parse options -- simple key and value
     check_options: dict[str, str] = {}
@@ -69,7 +76,7 @@ def parse_body(body: str) -> ParseResult:
         pr_link=pr_link,
         check_name=check_name,
         tidy_config=tidy_config,
-        compare_baseline="/baseline" in lines[1:],
+        compare_baseline=bool(pr_link) and "/baseline" in lines[1:],
     )
 
 
