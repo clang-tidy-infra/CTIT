@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
     inputs:
       pr_link:
-        description: 'PR URL (e.g. https://github.com/llvm/llvm-project/pull/12345)'
-        required: true
+        description: 'PR URL (e.g. https://github.com/llvm/llvm-project/pull/12345); leave empty to run against unpatched LLVM'
+        required: false
       check_name:
         description: 'Clang-tidy check name'
         required: true
@@ -214,11 +214,12 @@ jobs:
           fi
 
       - name: Apply LLVM PR patch
+        if: env.PR_LINK != ''
         run: bash apply_patch.sh
         env:
           GITHUB_PATCH_ID: ${{ env.PR_LINK }}
 
-      - name: Build patched clang-tidy
+      - name: Build clang-tidy
         run: bash build.sh
 
       - name: Run clang-tidy on test projects
@@ -293,8 +294,13 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.CTIT_RESULTS_TOKEN }}
         run: |
-          PR_NUMBER=$(python3 -c 'import json; print(json.load(open("../ctit-result.json"))["pr_number"])')
-          RESULT_PATH="runs/$(date -u +%Y/%m)/pr-$PR_NUMBER-${{ github.run_id }}-${{ github.run_attempt }}-${{ runner.arch }}.json"
+          if [ -n "$PR_LINK" ]; then
+            PR_NUMBER=$(python3 -c 'import json; print(json.load(open("../ctit-result.json"))["pr_number"])')
+            RESULT_SLUG="pr-$PR_NUMBER"
+          else
+            RESULT_SLUG="main-$(printf '%s' "$CHECK_NAME" | tr -c 'A-Za-z0-9._-' '_')"
+          fi
+          RESULT_PATH="runs/$(date -u +%Y/%m)/$RESULT_SLUG-${{ github.run_id }}-${{ github.run_attempt }}-${{ runner.arch }}.json"
           mkdir -p "$(dirname "$RESULT_PATH")"
           cp ../ctit-result.json "$RESULT_PATH"
           git config user.name "github-actions[bot]"

@@ -15,7 +15,7 @@ This service is inspired by [Yingwei Zheng (dtcxzyw)'s llvm-fuzz-service](https:
    [OPTION_1]: [VALUE_1]
    [OPTION_2]: [VALUE_2]
    ```
-   - PR_URL: The URL of the clang-tidy PR.
+   - PR_URL: The URL of the clang-tidy PR. Omit it to run an existing check without path.
    - CHECK_NAME: The name of the clang-tidy check you want to run (e.g. `bugprone-argument-comment`).
    - OPTIONS (Optional): Key-value pairs for check options. The check name prefix is automatically added.
 
@@ -26,11 +26,18 @@ This service is inspired by [Yingwei Zheng (dtcxzyw)'s llvm-fuzz-service](https:
    VariablePrefix: v_
    ```
 
+   To run a check that already exists upstream, drop the PR URL:
+
+   ```text
+   readability-identifier-naming
+   VariableCase: camelBack
+   ```
+
 2. Label the issue with `cpp` or `c`.
 
 3. Wait for the CI to run. The service will:
-   - Apply the patch from your PR.
-   - Build the modified `clang-tidy`.
+   - Apply the patch from your PR, when one was given.
+   - Build `clang-tidy`.
    - Run the integration tests on supported projects.
    - Post a report comment back to the issue.
 
