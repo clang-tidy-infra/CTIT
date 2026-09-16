@@ -77,12 +77,11 @@
       "url": "https://github.com/NVIDIA/stdexec.git",
       "commit": "0758df65c6571076d67276362c07146e13958740",
       "cmake_flags": [
-        "-DSTDEXEC_BUILD_TESTS=ON",
-        "-DSTDEXEC_BUILD_EXAMPLES=ON",
+        "-DSTDEXEC_BUILD_TESTS=OFF",
+        "-DSTDEXEC_BUILD_EXAMPLES=OFF",
         "-DSTDEXEC_BUILD_DOCS=OFF",
         "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"
-      ],
-      "file_regex": "(?!build/).*"
+      ]
     },
     "zstd": {
       "url": "https://github.com/facebook/zstd.git",
