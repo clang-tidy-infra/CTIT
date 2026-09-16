@@ -42,7 +42,7 @@ class Baseline:
 class Run:
     github_run_id: int
     github_run_attempt: int
-    pr_number: int
+    pr_number: int | None
     llvm_revision: str
     check_name: str
     check_config: dict[str, object]
@@ -73,7 +73,9 @@ def _read_config(value: str) -> dict[str, object]:
     return config
 
 
-def _pr_number(pr_url: str) -> int:
+def _pr_number(pr_url: str) -> int | None:
+    if not pr_url:
+        return None
     try:
         return int(pr_url.rstrip("/").rsplit("/", 1)[-1])
     except ValueError as exc:
@@ -244,7 +246,7 @@ def main() -> None:
         report_path="report.md",
         github_run_id=_required_environment("GITHUB_RUN_ID"),
         github_run_attempt=int(_required_environment("GITHUB_RUN_ATTEMPT")),
-        pr_url=_required_environment("PR_LINK"),
+        pr_url=os.environ.get("PR_LINK", ""),
         llvm_revision=llvm_revision,
         check_name=_required_environment("CHECK_NAME"),
         check_config=os.environ.get("TIDY_CONFIG", "{}") or "{}",
