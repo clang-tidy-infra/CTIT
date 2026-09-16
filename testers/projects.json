@@ -82,6 +82,68 @@
         "-DSTDEXEC_BUILD_DOCS=OFF",
         "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"
       ]
+    },
+    "zstd": {
+      "url": "https://github.com/facebook/zstd.git",
+      "commit": "ee650ef23636145c97ded0440ca743a54362a3ab",
+      "cmake_source_subdir": "build/cmake",
+      "cmake_flags": [
+        "-DZSTD_BUILD_TESTS=OFF",
+        "-DZSTD_BUILD_CONTRIB=OFF",
+        "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"
+      ]
+    },
+    "libuv": {
+      "url": "https://github.com/libuv/libuv.git",
+      "commit": "e15526ade343bdfc7cdaaeb0a51b9bba656533ce",
+      "cmake_flags": [
+        "-DLIBUV_BUILD_TESTS=OFF",
+        "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"
+      ]
+    },
+    "libgit2": {
+      "url": "https://github.com/libgit2/libgit2.git",
+      "commit": "0551dfd4ad989b6a3d5683c0d4cf326c6efef929",
+      "cmake_flags": [
+        "-DBUILD_TESTS=OFF",
+        "-DBUILD_CLI=OFF",
+        "-DUSE_HTTPS=OFF",
+        "-DUSE_SSH=OFF",
+        "-DUSE_NTLMCLIENT=OFF",
+        "-DUSE_BUNDLED_ZLIB=ON",
+        "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"
+      ],
+      "file_regex": "(?!deps/).*"
+    },
+    "catch2": {
+      "url": "https://github.com/catchorg/Catch2.git",
+      "commit": "02f8b5593a15cdec8558256e6f40a0c7fb5862d6",
+      "cmake_flags": [
+        "-DCATCH_INSTALL_DOCS=OFF",
+        "-DCATCH_INSTALL_EXTRAS=OFF",
+        "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"
+      ]
+    },
+    "yaml-cpp": {
+      "url": "https://github.com/jbeder/yaml-cpp.git",
+      "commit": "8eb618e889c003457d73f7c54777603835677ff4",
+      "cmake_flags": [
+        "-DYAML_CPP_BUILD_TESTS=OFF",
+        "-DYAML_CPP_BUILD_TOOLS=OFF",
+        "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"
+      ]
+    },
+    "assimp": {
+      "url": "https://github.com/assimp/assimp.git",
+      "commit": "747c1d6365ce871ce30897340d97e7cd9b47b9cc",
+      "cmake_flags": [
+        "-DASSIMP_BUILD_TESTS=OFF",
+        "-DASSIMP_BUILD_ASSIMP_TOOLS=OFF",
+        "-DASSIMP_BUILD_ZLIB=ON",
+        "-DASSIMP_INSTALL=OFF",
+        "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"
+      ],
+      "file_regex": "(?!contrib/).*"
     }
   }
 }

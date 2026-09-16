@@ -50,6 +50,12 @@ This service is inspired by [Yingwei Zheng (dtcxzyw)'s llvm-fuzz-service](https:
 - [Abseil](https://github.com/abseil/abseil-cpp)
 - [stdexec](https://github.com/NVIDIA/stdexec)
 - [curl](https://github.com/curl/curl)
+- [zstd](https://github.com/facebook/zstd)
+- [libuv](https://github.com/libuv/libuv)
+- [libgit2](https://github.com/libgit2/libgit2)
+- [Catch2](https://github.com/catchorg/Catch2)
+- [yaml-cpp](https://github.com/jbeder/yaml-cpp)
+- [Assimp](https://github.com/assimp/assimp)
 
 ## Local development
 
