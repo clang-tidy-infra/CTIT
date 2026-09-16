@@ -41,6 +41,19 @@ This service is inspired by [Yingwei Zheng (dtcxzyw)'s llvm-fuzz-service](https:
    - Run the integration tests on supported projects.
    - Post a report comment back to the issue.
 
+## Nightly new-check watcher
+
+The `Nightly New Check PRs` workflow runs every night and looks at
+`llvm/llvm-project` pull requests that saw activity in the last 24 hours. For
+every pull request that adds a brand-new clang-tidy check it either:
+
+- opens a `[Test] <check-name>` issue and labels it `cpp` or `c`, which starts
+  an integration run, or
+- comments `/redo` on the issue that already tracks that pull request and check.
+
+An issue that carries neither `cpp` nor `c` is left untouched, so removing the
+label is how you stop a pull request from being re-tested every night.
+
 ## Projects
 
 - [Cppcheck](https://github.com/danmar/cppcheck)
