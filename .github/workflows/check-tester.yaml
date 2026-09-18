@@ -38,7 +38,7 @@ jobs:
           && contains(github.event.comment.body, '/redo')
           && (contains(github.event.issue.labels.*.name, 'cpp')
               || contains(github.event.issue.labels.*.name, 'c')))
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 1
     permissions:
       issues: write
@@ -86,7 +86,7 @@ jobs:
   determine-runner:
     needs: authorize-trigger
     if: needs.authorize-trigger.outputs.authorized == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 1
     outputs:
       runner: ${{ steps.set-runner.outputs.use-runner }}
