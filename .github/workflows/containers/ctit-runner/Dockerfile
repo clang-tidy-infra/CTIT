@@ -52,6 +52,13 @@ ENV CC=clang-21
 ENV CXX=clang++-21
 ENV LLVM_USE_LINKER=mold
 
+# Installing under /opt keeps the agent readable for both root and the gha user.
+RUN curl -fsS https://cursor.com/install | HOME=/opt/cursor-agent bash && \
+    ln -s /opt/cursor-agent/.local/bin/agent /usr/local/bin/agent && \
+    ln -s /opt/cursor-agent/.local/bin/cursor-agent /usr/local/bin/cursor-agent && \
+    chmod -R a+rX /opt/cursor-agent && \
+    agent --version
+
 # Create a new user with id 1001 as that is the user id that
 # Github Actions uses to perform the checkout action.
 RUN useradd gha -u 1001 -m -s /bin/bash
