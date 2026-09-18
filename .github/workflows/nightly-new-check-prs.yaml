@@ -2,7 +2,7 @@ name: Nightly New Checks Analysis
 
 on:
   schedule:
-    - cron: '0 1 * * *'
+    - cron: '0 1,13 * * *' # Twice a day, 12 hours apart
   workflow_dispatch:
     inputs:
       since_hours:
