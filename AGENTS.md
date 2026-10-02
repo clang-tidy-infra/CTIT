@@ -11,7 +11,7 @@ from integration test results and determine whether each warning is a
 ├── issue.md                          # Generated report with all warnings
 ├── test_projects/<project>/          # Cloned source of each test project
 │   └── <relative_path>               # Files referenced in warnings
-├── llvm-project/                     # LLVM monorepo (with PR patch applied)
+├── llvm-project/                     # LLVM monorepo (with the PR patch applied, if any)
 │   └── clang-tools-extra/
 │       ├── clang-tidy/<module>/      # Check implementations (.cpp/.h)
 │       └── docs/clang-tidy/checks/

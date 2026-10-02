@@ -98,6 +98,29 @@ class TestParseIssue(unittest.TestCase):
             config["CheckOptions"],
         )
 
+    def test_check_name_without_pr_link(self):
+        result = parse_body("bugprone-argument-comment")
+        self.assertEqual(result.pr_link, "")
+        self.assertEqual(result.check_name, "bugprone-argument-comment")
+        self.assertEqual(result.tidy_config, "")
+        self.assertFalse(result.compare_baseline)
+
+    def test_options_without_pr_link(self):
+        body = """
+        readability-identifier-naming
+        VariableCase: camelBack
+        """
+        result = parse_body(body)
+        self.assertEqual(result.pr_link, "")
+        opts = json.loads(result.tidy_config)["CheckOptions"]
+        self.assertEqual(
+            opts["readability-identifier-naming.VariableCase"], "camelBack"
+        )
+
+    def test_baseline_ignored_without_pr_link(self):
+        result = parse_body("check\n/baseline")
+        self.assertFalse(result.compare_baseline)
+
     def test_empty_body(self):
         with self.assertRaises(ValueError):
             parse_body("")

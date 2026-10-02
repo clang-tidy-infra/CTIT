@@ -122,6 +122,28 @@ class TestSlimComment(unittest.TestCase):
         self.assertIn(ARTIFACT_URL, result)
 
 
+class TestSlimCommentPrefix(unittest.TestCase):
+    """The comment always keeps its opening, which is where markers live."""
+
+    MARKER = "<!-- ctit-run sha=ea6429df66a95822a3ad5617479c53158b07b57f -->\n\n"
+
+    def test_prefix_survives_when_nothing_is_stripped(self):
+        content = self.MARKER + _SUMMARY
+        self.assertTrue(slim_comment(content, ARTIFACT_URL).startswith(self.MARKER))
+
+    def test_prefix_survives_when_ai_analysis_is_stripped(self):
+        content = self.MARKER + _SUMMARY + _PROJECT_DETAILS + _AI_ANALYSIS * 4000
+        result = slim_comment(content, ARTIFACT_URL)
+        self.assertTrue(result.startswith(self.MARKER))
+        self.assertLessEqual(len(result), GITHUB_COMMENT_LIMIT)
+
+    def test_prefix_survives_when_everything_is_stripped(self):
+        content = self.MARKER + _SUMMARY + _PROJECT_DETAILS * 4000 + _AI_ANALYSIS
+        result = slim_comment(content, ARTIFACT_URL)
+        self.assertTrue(result.startswith(self.MARKER))
+        self.assertLessEqual(len(result), GITHUB_COMMENT_LIMIT)
+
+
 class TestSlimCommentCLI(unittest.TestCase):
     def _run(self, content: str, artifact_url: str) -> tuple[str, str, int]:
         with tempfile.TemporaryDirectory() as tmp_dir:

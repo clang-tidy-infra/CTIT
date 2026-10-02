@@ -9,7 +9,7 @@ permissions: {}
 
 jobs:
   update-submodule:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: write
     steps:
@@ -47,7 +47,7 @@ jobs:
 
   determine-runner:
     needs: update-submodule
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions: {}
     timeout-minutes: 1
     outputs:
@@ -67,7 +67,7 @@ jobs:
     container:
       image: ghcr.io/clang-tidy-infra/ctit-runner:latest # zizmor: ignore[unpinned-images]
       options: --user root
-    timeout-minutes: 360
+    timeout-minutes: 180
 
     permissions:
       contents: read

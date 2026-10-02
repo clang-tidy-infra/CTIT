@@ -115,6 +115,33 @@ class TestResult(unittest.TestCase):
             self.assertEqual(result.baseline.llvm_revision, "base")
             self.assertIsNone(result.baseline.project_runs)
 
+    def test_omits_pr_number_for_a_run_without_a_patch(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            with open(os.path.join(tmp_dir, "demo.log"), "w") as stream:
+                stream.write(
+                    "/work/test_projects/demo/a.cpp:7:3: warning: bad move [check-a]\n"
+                )
+
+            result = create_result(
+                log_dir=tmp_dir,
+                report_path=None,
+                github_run_id="42",
+                github_run_attempt=1,
+                pr_url="",
+                llvm_revision="base",
+                check_name="check-a",
+                check_config="{}",
+                runner_arch="ARM64",
+                started_at="2026-09-12T01:00:00Z",
+                finished_at="2026-09-12T01:01:00Z",
+                duration_seconds=60.0,
+                status="COMPLETED",
+                artifact_url=None,
+            )
+
+            self.assertIsNone(result.pr_number)
+            self.assertEqual(result.project_runs[0].diagnostics[0].message, "bad move")
+
     def test_keeps_report_rows_aligned_when_log_contains_an_error(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
             with open(os.path.join(tmp_dir, "demo.log"), "w") as stream:

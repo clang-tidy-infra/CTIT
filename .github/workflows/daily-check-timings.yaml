@@ -13,13 +13,16 @@ jobs:
     container:
       image: ghcr.io/clang-tidy-infra/ctit-runner:latest # zizmor: ignore[unpinned-images]
       options: --user root
-    timeout-minutes: 360
+    timeout-minutes: 180
     permissions:
       contents: read
       packages: read
 
     env:
+      CTIT_JOBS: "48"
       SCCACHE_GHA_ENABLED: "true"
+      SCCACHE_LOG: sccache::server=debug,sccache::cache=warn
+      SCCACHE_ERROR_LOG: ${{ github.workspace }}/logs/sccache/server.log
       LLVM_SYMBOLIZER_PATH: ${{ github.workspace }}/llvm-project/build/bin/llvm-symbolizer
 
     steps:
@@ -47,6 +50,11 @@ jobs:
 
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
+
+      - name: Start sccache
+        run: |
+          mkdir -p logs/sccache
+          sccache --start-server
 
       - name: Build clang-tidy
         run: bash build.sh

@@ -15,7 +15,7 @@ This service is inspired by [Yingwei Zheng (dtcxzyw)'s llvm-fuzz-service](https:
    [OPTION_1]: [VALUE_1]
    [OPTION_2]: [VALUE_2]
    ```
-   - PR_URL: The URL of the clang-tidy PR.
+   - PR_URL: The URL of the clang-tidy PR. Omit it to run an existing check without path.
    - CHECK_NAME: The name of the clang-tidy check you want to run (e.g. `bugprone-argument-comment`).
    - OPTIONS (Optional): Key-value pairs for check options. The check name prefix is automatically added.
 
@@ -26,13 +26,33 @@ This service is inspired by [Yingwei Zheng (dtcxzyw)'s llvm-fuzz-service](https:
    VariablePrefix: v_
    ```
 
+   To run a check that already exists upstream, drop the PR URL:
+
+   ```text
+   readability-identifier-naming
+   VariableCase: camelBack
+   ```
+
 2. Label the issue with `cpp` or `c`.
 
 3. Wait for the CI to run. The service will:
-   - Apply the patch from your PR.
-   - Build the modified `clang-tidy`.
+   - Apply the patch from your PR, when one was given.
+   - Build `clang-tidy`.
    - Run the integration tests on supported projects.
    - Post a report comment back to the issue.
+
+## Nightly new-check watcher
+
+The `Nightly New Check PRs` workflow runs every night and looks at
+`llvm/llvm-project` pull requests that saw activity in the last 24 hours. For
+every pull request that adds a brand-new clang-tidy check it either:
+
+- opens a `[Test] <check-name>` issue and labels it `cpp` or `c`, which starts
+  an integration run, or
+- comments `/redo` on the issue that already tracks that pull request and check.
+
+An issue that carries neither `cpp` nor `c` is left untouched, so removing the
+label is how you stop a pull request from being re-tested every night.
 
 ## Projects
 
@@ -43,6 +63,12 @@ This service is inspired by [Yingwei Zheng (dtcxzyw)'s llvm-fuzz-service](https:
 - [Abseil](https://github.com/abseil/abseil-cpp)
 - [stdexec](https://github.com/NVIDIA/stdexec)
 - [curl](https://github.com/curl/curl)
+- [zstd](https://github.com/facebook/zstd)
+- [libuv](https://github.com/libuv/libuv)
+- [libgit2](https://github.com/libgit2/libgit2)
+- [Catch2](https://github.com/catchorg/Catch2)
+- [yaml-cpp](https://github.com/jbeder/yaml-cpp)
+- [Assimp](https://github.com/assimp/assimp)
 
 ## Local development
 
