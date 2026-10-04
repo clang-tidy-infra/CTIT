@@ -14,7 +14,6 @@ commands=(
     "git --version"
     "clang-21 --version"
     "mold --version"
-    "agent --version"
 )
 
 for cmd in "${commands[@]}"; do
