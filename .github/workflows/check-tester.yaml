@@ -50,6 +50,7 @@ jobs:
         env:
           COMMENT_TOKEN: ${{ github.token }}
           COMMENT_AUTHOR: ${{ github.event.comment.user.login }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
           EVENT_NAME: ${{ github.event_name }}
           ISSUE_AUTHOR: ${{ github.event.issue.user.login }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
@@ -61,6 +62,12 @@ jobs:
               requester="$ISSUE_AUTHOR"
               ;;
             issue_comment)
+              redo_command='^\s*/redo(\s|$)'
+              if ! printf '%s\n' "$COMMENT_BODY" | grep -Eq "$redo_command"; then
+                echo "No line starts with /redo; not starting a run."
+                echo "authorized=false" >> "$GITHUB_OUTPUT"
+                exit
+              fi
               requester="$COMMENT_AUTHOR"
               ;;
             workflow_dispatch)
