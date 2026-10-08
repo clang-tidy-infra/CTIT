@@ -16,6 +16,7 @@ jobs:
     timeout-minutes: 180
     permissions:
       contents: read
+      issues: write
       packages: read
 
     env:
@@ -74,6 +75,21 @@ jobs:
       - name: Parse check timings profile
         run: python3 crash_detection/parse_check_profile.py --log-dir logs/ --output profile-report.md
 
+      - name: Post check timings to tracking issue
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUNNER: ${{ runner.name }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: >
+          python3 -m crash_detection.post_check_timings
+          --repo "$REPO"
+          --log-dir logs/
+          --llvm-revision "$(git -C llvm-project rev-parse HEAD)"
+          --runner "$RUNNER"
+          --run-url "$RUN_URL"
+          --output check-timings-comment.md
+
       - name: Upload check timings
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
@@ -83,3 +99,4 @@ jobs:
             logs/
             profile-report.md
             profile-report-detailed.md
+            check-timings-comment.md
