@@ -32,12 +32,13 @@ jobs:
     if: >
       github.event_name == 'workflow_dispatch'
       || (github.event_name == 'issues'
-          && (github.event.label.name == 'cpp' || github.event.label.name == 'c'))
+          && (github.event.label.name == 'test-cpp'
+              || github.event.label.name == 'test-c'))
       || (github.event_name == 'issue_comment'
           && github.event.issue.pull_request == null
           && contains(github.event.comment.body, '/redo')
-          && (contains(github.event.issue.labels.*.name, 'cpp')
-              || contains(github.event.issue.labels.*.name, 'c')))
+          && (contains(github.event.issue.labels.*.name, 'test-cpp')
+              || contains(github.event.issue.labels.*.name, 'test-c')))
     runs-on: ubuntu-26.04
     timeout-minutes: 1
     permissions:

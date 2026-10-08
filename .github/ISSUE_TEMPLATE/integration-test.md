@@ -2,7 +2,7 @@
 name: Integration test
 about: Test a clang-tidy check from an LLVM pull request.
 title: "[Test] "
-labels: cpp
+labels: test-cpp
 assignees: ''
 
 ---

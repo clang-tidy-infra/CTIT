@@ -27,6 +27,7 @@ def _target(
     pr_number=181570,
     check_name="bugprone-smart-ptr-initialization",
     head_sha=HEAD,
+    language="cpp",
 ):
     return CheckTarget(
         pr_number=pr_number,
@@ -35,7 +36,7 @@ def _target(
         updated_at="2026-09-13T12:00:00Z",
         head_sha=head_sha,
         check_name=check_name,
-        language="cpp",
+        language=language,
     )
 
 
@@ -44,7 +45,7 @@ def _issue(
     pr_number=181570,
     check="bugprone-smart-ptr-initialization",
     state="open",
-    labels=("cpp",),
+    labels=("test-cpp",),
     body=None,
     created_at="2026-09-01T00:00:00Z",
 ):
@@ -72,7 +73,7 @@ class TestParseIssueRef(unittest.TestCase):
             "number": 209,
             "state": "open",
             "created_at": "2026-09-09T00:00:00Z",
-            "labels": [{"name": "cpp"}],
+            "labels": [{"name": "test-cpp"}],
             "body": "https://github.com/llvm/llvm-project/pull/222159 "
             "performance-inefficient-container-assignment\n",
         }
@@ -81,7 +82,7 @@ class TestParseIssueRef(unittest.TestCase):
         self.assertEqual(
             issue.check_name, "performance-inefficient-container-assignment"
         )
-        self.assertEqual(issue.labels, frozenset({"cpp"}))
+        self.assertEqual(issue.labels, frozenset({"test-cpp"}))
 
     def test_tolerates_unrelated_issue_body(self):
         issue = parse_issue_ref({"number": 214, "body": "Update cmake version"})
@@ -151,7 +152,15 @@ class TestPlanActions(unittest.TestCase):
         actions = plan_actions([_target()], [_issue(labels=())], _never, limit=10)
         self.assertEqual(actions[0].kind, SKIP)
         self.assertEqual(actions[0].issue_number, 10)
-        self.assertIn("no cpp/c label", actions[0].reason)
+        self.assertIn("no test-cpp/test-c label", actions[0].reason)
+
+    def test_redoes_issue_with_c_label(self):
+        actions = plan_actions([_target()], [_issue(labels=("test-c",))], _never, 10)
+        self.assertEqual(actions[0].kind, REDO)
+
+    def test_old_language_label_does_not_trigger(self):
+        actions = plan_actions([_target()], [_issue(labels=("cpp",))], _never, 10)
+        self.assertEqual(actions[0].kind, SKIP)
 
     def test_unlabeled_issue_does_not_consume_the_limit(self):
         targets = [_target(pr_number=1), _target(pr_number=2)]
@@ -246,11 +255,13 @@ class FlakyClient:
 
     def __init__(self, fail_indexes=()):
         self.paths = []
+        self.payloads = []
         self.fail_indexes = set(fail_indexes)
 
     def post(self, path, payload):
         index = len(self.paths)
         self.paths.append(path)
+        self.payloads.append(payload)
         if index in self.fail_indexes:
             raise GitHubError(f"boom on {path}")
         return {"number": 90 + index}
@@ -283,6 +294,14 @@ class TestApplyActions(unittest.TestCase):
         self.assertEqual(
             client.paths, ["repos/org/repo/issues", "repos/org/repo/issues/90/labels"]
         )
+        self.assertEqual(client.payloads[1], {"labels": ["test-cpp"]})
+
+    def test_labels_a_c_check_with_the_c_label(self):
+        client = FlakyClient()
+        apply_actions(
+            client, "org/repo", [Action(CREATE, _target(language="c"), "new")]
+        )
+        self.assertEqual(client.payloads[1], {"labels": ["test-c"]})
 
     def test_redo_failure_is_recorded(self):
         applied = apply_actions(
