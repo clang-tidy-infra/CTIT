@@ -1,16 +1,18 @@
 [build-system]
-requires = ["setuptools==84.0.0", "wheel==0.48.0"]
+requires = ["setuptools==84.0.0", "setuptools-scm==10.3.4", "wheel==0.48.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "ctit"
-version = "0.2.0"
+dynamic = ["version"]  # From the git tag, see [tool.setuptools_scm]
 description = "Clang Tidy Integration Tester - CI service for testing clang-tidy checks against real-world C/C++ projects"
 readme = "README.md"
 requires-python = ">=3.10"
-license = {text = "Apache-2.0"}
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 authors = [
     {name = "Mitchell", email = "zeyi2@nekoarch.cc"},
+    {name = "Victor Baranov", email = "vbvictor@proton.me"},
 ]
 dependencies = [
     "argcomplete==3.7.2",
@@ -27,7 +29,6 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: Apache Software License",
     "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
@@ -45,6 +46,7 @@ ctit = "ctit:main"
 Homepage = "https://github.com/clang-tidy-infra/CTIT"
 Repository = "https://github.com/clang-tidy-infra/CTIT"
 Issues = "https://github.com/clang-tidy-infra/CTIT/issues"
+Changelog = "https://github.com/clang-tidy-infra/CTIT/releases"
 
 [project.optional-dependencies]
 dev = [
@@ -59,10 +61,13 @@ dev = [
 
 [tool.setuptools]
 py-modules = ["ctit"]
-packages = ["crash_detection", "pr_watcher", "testers"]
+packages = ["crash_detection", "testers"]
 
 [tool.setuptools.package-data]
 testers = ["projects.json"]
+
+# Releases are tagged vX.Y.Z; untagged commits get a .devN version.
+[tool.setuptools_scm]
 
 [tool.black]
 line-length = 88
