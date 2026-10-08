@@ -1,0 +1,55 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+permissions: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout CTIT
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # setuptools-scm reads the version from the release tag
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+
+      - name: Build distribution
+        run: |
+          python -m pip install build==1.6.1
+          python -m build
+
+      - name: Upload distribution
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dist
+          path: dist/
+
+  pypi-publish:
+    needs: build
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    environment:
+      name: pypi
+      url: https://pypi.org/project/ctit/
+    permissions:
+      id-token: write # Trusted publishing to PyPI
+    steps:
+      - name: Download distribution
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2

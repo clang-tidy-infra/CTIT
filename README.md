@@ -292,6 +292,8 @@ make build-container   # build the runner image locally
 make test-container    # build the runner image and run its smoke tests
 ```
 
+To publish a new version, see [docs/releasing.md](docs/releasing.md).
+
 ## Acknowledgements
 
 1. CTIT is inspired by [Yingwei Zheng (dtcxzyw)'s
