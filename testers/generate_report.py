@@ -17,6 +17,8 @@ from testers.config import load_projects
 DEFAULT_LOG_DIR = "logs"
 DEFAULT_OUTPUT_FILE = "issue.md"
 MAX_CRASH_EXAMPLES = 3
+RESULTS_MARKER = "<!-- ctit-results -->"
+MAX_DIFF_LIST_CHARS = 25_000
 
 
 @dataclass
@@ -194,6 +196,151 @@ def write_summary_table(f: TextIO, results: list[ProjectResult]) -> None:
     f.write("\n---\n")
 
 
+@dataclass
+class ProjectDiff:
+    """Diagnostics one project gained or lost against the baseline."""
+
+    name: str
+    baseline_count: int
+    pr_count: int
+    new: list[Issue]
+    removed: list[Issue]
+
+
+def diff_against_baseline(
+    results: list[ProjectResult], baseline_results: list[ProjectResult]
+) -> list[ProjectDiff]:
+    """Compares the PR run with the baseline run, project by project.
+
+    Diagnostics match on location and check, like the deduplication in
+    parse_log_file, so a reworded message is not counted as a difference.
+    """
+
+    def by_key(result: ProjectResult | None) -> dict[tuple[str, int, int, str], Issue]:
+        if result is None:
+            return {}
+        return {(i.file_path, i.line, i.col, i.check_name): i for i in result.issues}
+
+    current = {res.name: res for res in results}
+    baseline = {res.name: res for res in baseline_results}
+    diffs: list[ProjectDiff] = []
+    for name in sorted(current.keys() | baseline.keys()):
+        before = by_key(baseline.get(name))
+        after = by_key(current.get(name))
+        diffs.append(
+            ProjectDiff(
+                name=name,
+                baseline_count=len(before),
+                pr_count=len(after),
+                new=[after[key] for key in sorted(after.keys() - before.keys())],
+                removed=[before[key] for key in sorted(before.keys() - after.keys())],
+            )
+        )
+    return diffs
+
+
+def _count(number: int, noun: str) -> str:
+    return f"{number} {noun}" if number == 1 else f"{number} {noun}s"
+
+
+def format_issue(issue: Issue, base_url: str | None, project: str | None = None) -> str:
+    """Returns the markdown entry for one diagnostic."""
+    if base_url:
+        link = f"{base_url}/{issue.file_path}#L{issue.line}"
+        loc_text = f"[{issue.file_path}:{issue.line}]({link})"
+    else:
+        loc_text = f"{issue.file_path}:{issue.line}"
+    if project:
+        loc_text = f"{project}: {loc_text}"
+
+    icon = "🛑" if issue.severity == "error" else "⚠️"
+    text = f"#### {icon} {loc_text}\n{issue.message} `[{issue.check_name}]`\n"
+    if issue.context:
+        text += f"  ```cpp\n  {issue.context}\n  ```\n"
+    return text
+
+
+def write_diff_list(
+    f: TextIO,
+    title: str,
+    entries: list[tuple[str, Issue]],
+    project_urls: dict[str, str],
+) -> None:
+    """Writes a collapsed list of (project, diagnostic) entries."""
+    if not entries:
+        return
+    f.write(
+        f"<details>\n<summary><strong>{title} ({len(entries)})</strong></summary>\n\n"
+    )
+    written = 0
+    for shown, (project, issue) in enumerate(entries):
+        text = format_issue(issue, project_urls.get(project), project)
+        if written + len(text) > MAX_DIFF_LIST_CHARS:
+            f.write(
+                f"\n_...and {len(entries) - shown} more. The full report in the "
+                "workflow artifacts lists every diagnostic of both runs._\n"
+            )
+            break
+        f.write(text)
+        written += len(text)
+    f.write("\n</details>\n\n")
+
+
+def write_baseline_comparison(
+    f: TextIO,
+    results: list[ProjectResult],
+    baseline_results: list[ProjectResult],
+    project_urls: dict[str, str],
+) -> None:
+    """Writes the changes against the baseline: counts, then new and removed lists."""
+    diffs = diff_against_baseline(results, baseline_results)
+    changed = [diff for diff in diffs if diff.new or diff.removed]
+    unchanged = [
+        diff for diff in diffs if not (diff.new or diff.removed) and diff.pr_count
+    ]
+    total_pr = sum(diff.pr_count for diff in diffs)
+
+    f.write("## Changes against baseline\n\n")
+    if not changed:
+        if total_pr:
+            f.write(
+                f"No changes: both runs report the same "
+                f"{_count(total_pr, 'diagnostic')}.\n\n"
+            )
+        else:
+            f.write("No changes: neither run reports any diagnostics.\n\n")
+        return
+
+    f.write("| Project | Baseline | PR | New | Removed |\n")
+    f.write("| :--- | ---: | ---: | ---: | ---: |\n")
+    f.writelines(
+        f"| **{diff.name}** | {diff.baseline_count} | {diff.pr_count} "
+        f"| {len(diff.new)} | {len(diff.removed)} |\n"
+        for diff in changed
+    )
+    f.write(
+        f"| **Total** | {sum(diff.baseline_count for diff in diffs)} | {total_pr} "
+        f"| {sum(len(diff.new) for diff in diffs)} "
+        f"| {sum(len(diff.removed) for diff in diffs)} |\n\n"
+    )
+    if unchanged:
+        same = sum(diff.pr_count for diff in unchanged)
+        f.write(
+            f"{_count(same, 'diagnostic')} in "
+            f"{_count(len(unchanged), 'other project')} did not change.\n\n"
+        )
+
+    write_diff_list(
+        f, "New in PR", [(d.name, i) for d in changed for i in d.new], project_urls
+    )
+    write_diff_list(
+        f,
+        "Removed in PR",
+        [(d.name, i) for d in changed for i in d.removed],
+        project_urls,
+    )
+
+
 def write_project_details(
     f: TextIO, result: ProjectResult, project_urls: dict[str, str]
 ) -> None:
@@ -208,21 +355,7 @@ def write_project_details(
         write_crash_details(f, result)
 
     base_url = project_urls.get(result.name)
-
-    for issue in result.issues:
-        if base_url:
-            link = f"{base_url}/{issue.file_path}#L{issue.line}"
-            loc_text = f"[{issue.file_path}:{issue.line}]({link})"
-        else:
-            loc_text = f"{issue.file_path}:{issue.line}"
-
-        icon = "🛑" if issue.severity == "error" else "⚠️"
-
-        f.write(f"#### {icon} {loc_text}\n")
-        f.write(f"{issue.message} `[{issue.check_name}]`\n")
-
-        if issue.context:
-            f.write(f"  ```cpp\n  {issue.context}\n  ```\n")
+    f.writelines(format_issue(issue, base_url) for issue in result.issues)
 
     f.write("\n</details>\n")
 
@@ -307,6 +440,8 @@ def generate_markdown(
                         "Check unavailable in baseline; baseline analysis skipped.\n\n"
                     )
             if baseline_results is not None:
+                write_baseline_comparison(f, results, baseline_results, project_urls)
+                f.write(f"{RESULTS_MARKER}\n\n")
                 f.write("## PR results\n\n")
             write_summary_table(f, results)
             if baseline_results is not None:
@@ -316,7 +451,8 @@ def generate_markdown(
             for res in results:
                 write_project_details(f, res, project_urls)
             if baseline_results is not None:
-                f.write("## Baseline diagnostics\n\n")
+                # A heading right after </details> would render as plain text.
+                f.write("\n## Baseline diagnostics\n\n")
                 for res in baseline_results:
                     write_project_details(f, res, project_urls)
         print(f"Report generated: {output_path}")

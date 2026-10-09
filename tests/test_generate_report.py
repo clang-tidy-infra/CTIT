@@ -9,10 +9,13 @@ from testers.generate_report import (
     MAX_CRASH_EXAMPLES,
     Issue,
     ProjectResult,
+    RESULTS_MARKER,
+    diff_against_baseline,
     generate_markdown,
     generate_report,
     get_relative_path,
     parse_log_file,
+    write_baseline_comparison,
     write_project_details,
     write_summary_table,
 )
@@ -543,6 +546,131 @@ class TestGenerateMarkdown(unittest.TestCase):
             self.assertIn("check-b", content)
 
 
+def _result(name, *diagnostics):
+    return ProjectResult(
+        name=name,
+        issues=[
+            Issue(
+                file_path=path,
+                line=line,
+                col=1,
+                severity="warning",
+                message="msg",
+                check_name=check,
+            )
+            for path, line, check in diagnostics
+        ],
+    )
+
+
+def _keys(issues):
+    return [(issue.file_path, issue.line, issue.check_name) for issue in issues]
+
+
+class TestDiffAgainstBaseline(unittest.TestCase):
+    def test_new_and_removed_per_project(self):
+        pr = [_result("proj", ("a.cpp", 2, "check"), ("a.cpp", 1, "check"))]
+        baseline = [_result("proj", ("a.cpp", 2, "check"), ("b.cpp", 3, "check"))]
+        [diff] = diff_against_baseline(pr, baseline)
+        self.assertEqual((diff.baseline_count, diff.pr_count), (2, 2))
+        self.assertEqual(_keys(diff.new), [("a.cpp", 1, "check")])
+        self.assertEqual(_keys(diff.removed), [("b.cpp", 3, "check")])
+
+    def test_reworded_message_is_the_same_diagnostic(self):
+        pr = [_result("proj", ("a.cpp", 1, "check"))]
+        baseline = [_result("proj", ("a.cpp", 1, "check"))]
+        baseline[0].issues[0].message = "old wording"
+        [diff] = diff_against_baseline(pr, baseline)
+        self.assertEqual((diff.new, diff.removed), ([], []))
+
+    def test_other_check_at_same_location_differs(self):
+        pr = [_result("proj", ("a.cpp", 1, "check-new"))]
+        baseline = [_result("proj", ("a.cpp", 1, "check-old"))]
+        [diff] = diff_against_baseline(pr, baseline)
+        self.assertEqual(_keys(diff.new), [("a.cpp", 1, "check-new")])
+        self.assertEqual(_keys(diff.removed), [("a.cpp", 1, "check-old")])
+
+    def test_project_missing_from_one_run(self):
+        pr = [_result("only-pr", ("a.cpp", 1, "check"))]
+        baseline = [_result("only-base", ("a.cpp", 1, "check"))]
+        diffs = diff_against_baseline(pr, baseline)
+        self.assertEqual([d.name for d in diffs], ["only-base", "only-pr"])
+        self.assertEqual([len(d.removed) for d in diffs], [1, 0])
+        self.assertEqual([len(d.new) for d in diffs], [0, 1])
+
+
+CURL_URLS = {"curl": "https://github.com/curl/curl/blob/abc"}
+
+
+class TestWriteBaselineComparison(unittest.TestCase):
+    def _write(self, pr, baseline):
+        f = io.StringIO()
+        write_baseline_comparison(f, pr, baseline, CURL_URLS)
+        return f.getvalue()
+
+    def test_table_lists_changed_projects_and_totals(self):
+        output = self._write(
+            [
+                _result("curl", ("lib/a.c", 1, "check")),
+                _result("poco", ("x.c", 1, "check")),
+                _result("same", ("y.c", 1, "check"), ("y.c", 2, "check")),
+            ],
+            [
+                _result("curl"),
+                _result("poco", ("x.c", 1, "check"), ("x.c", 2, "check")),
+                _result("same", ("y.c", 1, "check"), ("y.c", 2, "check")),
+            ],
+        )
+        self.assertIn("| Project | Baseline | PR | New | Removed |", output)
+        self.assertIn("| **curl** | 0 | 1 | 1 | 0 |", output)
+        self.assertIn("| **poco** | 2 | 1 | 0 | 1 |", output)
+        self.assertNotIn("**same**", output)
+        self.assertIn("| **Total** | 4 | 4 | 1 | 1 |", output)
+        self.assertIn("2 diagnostics in 1 other project did not change.", output)
+
+    def test_lists_new_then_removed_collapsed(self):
+        output = self._write(
+            [_result("curl", ("lib/a.c", 7, "check"))],
+            [_result("curl", ("lib/b.c", 9, "check"))],
+        )
+        new = output.index("<summary><strong>New in PR (1)</strong></summary>")
+        removed = output.index("<summary><strong>Removed in PR (1)</strong></summary>")
+        self.assertLess(new, removed)
+        self.assertNotIn("<details open", output)
+        self.assertIn(
+            "#### ⚠️ curl: [lib/a.c:7](https://github.com/curl/curl/blob/abc/lib/a.c#L7)",
+            output,
+        )
+        self.assertIn("curl: [lib/b.c:9]", output)
+
+    def test_skips_an_empty_list(self):
+        output = self._write([_result("p", ("a.c", 1, "c"))], [_result("p")])
+        self.assertIn("New in PR (1)", output)
+        self.assertNotIn("Removed in PR", output)
+
+    def test_no_changes(self):
+        output = self._write(
+            [_result("p", ("a.c", 1, "c"))], [_result("p", ("a.c", 1, "c"))]
+        )
+        self.assertIn("No changes: both runs report the same 1 diagnostic.", output)
+        self.assertNotIn("| Project |", output)
+        self.assertNotIn("<details>", output)
+
+    def test_no_diagnostics_at_all(self):
+        output = self._write([_result("p")], [_result("p")])
+        self.assertIn("neither run reports any diagnostics", output)
+
+    @patch("testers.generate_report.MAX_DIFF_LIST_CHARS", 200)
+    def test_caps_a_long_list(self):
+        pr = [_result("p", *((f"file{n}.c", n, "check") for n in range(10)))]
+        output = self._write(pr, [_result("p")])
+        self.assertIn("New in PR (10)", output)
+        shown = output.count("#### ")
+        self.assertGreater(shown, 0)
+        self.assertLess(shown, 10)
+        self.assertIn(f"_...and {10 - shown} more.", output)
+
+
 class TestGenerateReport(unittest.TestCase):
     def test_baseline_comparison_and_slimming(self):
         from slim_comment import slim_comment
@@ -568,8 +696,17 @@ class TestGenerateReport(unittest.TestCase):
             self.assertIn("Baseline warning", report)
             self.assertIn("| 2.00 |", report)
             self.assertIn("| 3.00 |", report)
+            # Same location and check, only the message differs.
+            self.assertIn("No changes: both runs report the same 1 diagnostic.", report)
+            self.assertLess(
+                report.index("## Changes against baseline"),
+                report.index(RESULTS_MARKER),
+            )
+            self.assertLess(report.index(RESULTS_MARKER), report.index("## PR results"))
+            self.assertIn("</details>\n\n## Baseline diagnostics", report)
             oversized = report.replace("PR warning", "x" * 70000)
             slimmed = slim_comment(oversized, "https://example.com/artifact")
+            self.assertIn("## Changes against baseline", slimmed)
             self.assertIn("## PR results", slimmed)
             self.assertIn("## Baseline results", slimmed)
             self.assertIn("https://example.com/artifact", slimmed)
@@ -585,6 +722,8 @@ class TestGenerateReport(unittest.TestCase):
                 report = f.read()
             self.assertIn("Check unavailable in baseline", report)
             self.assertNotIn("## Baseline results", report)
+            self.assertNotIn("## Changes against baseline", report)
+            self.assertNotIn(RESULTS_MARKER, report)
 
     def test_exits_when_log_dir_missing(self):
         with self.assertRaises(SystemExit) as ctx:
