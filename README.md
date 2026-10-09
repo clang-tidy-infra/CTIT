@@ -51,7 +51,7 @@ or reviewer to comment `/redo` on it. Their comment starts the run.
 | `PR_URL`             | No       | URL of the `llvm/llvm-project` pull request to test. Omit it to test a check that already exists on LLVM `main`.                                    |
 | `CHECK_NAME`         | Yes      | The clang-tidy check to run, for example `bugprone-argument-comment`. Glob patterns such as `bugprone-*` also work.                                 |
 | `OPTION_NAME: VALUE` | No       | Check options, one per line. CTIT adds the `CHECK_NAME.` prefix for you, so write `VariableCase`, not `readability-identifier-naming.VariableCase`. |
-| `/baseline`          | No       | Also run the check on unpatched LLVM `main` and show both results side by side. Only takes effect when a `PR_URL` is given.                         |
+| `/baseline`          | No       | Also run the check on unpatched LLVM `main` and list the diagnostics the PR adds or removes. Only works with a `PR_URL`.                            |
 
 ### Examples
 

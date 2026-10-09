@@ -4,6 +4,7 @@ import tempfile
 import unittest
 
 from slim_comment import GITHUB_COMMENT_LIMIT, slim_comment
+from testers.generate_report import RESULTS_MARKER
 
 ARTIFACT_URL = "https://github.com/org/repo/actions/runs/1/artifacts/2"
 
@@ -141,6 +142,42 @@ class TestSlimCommentPrefix(unittest.TestCase):
         content = self.MARKER + _SUMMARY + _PROJECT_DETAILS * 4000 + _AI_ANALYSIS
         result = slim_comment(content, ARTIFACT_URL)
         self.assertTrue(result.startswith(self.MARKER))
+        self.assertLessEqual(len(result), GITHUB_COMMENT_LIMIT)
+
+
+class TestSlimCommentBaseline(unittest.TestCase):
+    """Only the results after RESULTS_MARKER are trimmed, never the changes."""
+
+    CHANGES = (
+        "## Changes against baseline\n\n"
+        "| Project | Baseline | PR | New | Removed |\n"
+        "| :--- | ---: | ---: | ---: | ---: |\n"
+        "| **cppcheck** | 0 | 1 | 1 | 0 |\n"
+        "| **Total** | 0 | 1 | 1 | 0 |\n\n"
+        "<details>\n<summary><strong>New in PR (1)</strong></summary>\n\n"
+        "#### ⚠️ cppcheck: lib/token.cpp:10\nbad usage `[check]`\n"
+        "\n</details>\n\n"
+    )
+
+    def _report(self, results):
+        return self.CHANGES + RESULTS_MARKER + "\n\n" + results
+
+    def test_changes_survive_when_ai_analysis_is_stripped(self):
+        content = self._report(_SUMMARY + _PROJECT_DETAILS + _huge_ai())
+        result = slim_comment(content, ARTIFACT_URL)
+        self.assertTrue(result.startswith(self.CHANGES))
+        self.assertIn("cppcheck Details", result)
+        self.assertNotIn("AI False-Positive Analysis", result)
+        self.assertLessEqual(len(result), GITHUB_COMMENT_LIMIT)
+
+    def test_changes_survive_when_everything_is_stripped(self):
+        content = self._report(_SUMMARY + _huge_project_details() + _huge_ai())
+        result = slim_comment(content, ARTIFACT_URL)
+        self.assertTrue(result.startswith(self.CHANGES))
+        self.assertIn("New in PR (1)", result)
+        self.assertIn("| **cppcheck** | ⚠️ Warnings |", result)
+        self.assertNotIn("cppcheck Details", result)
+        self.assertIn(ARTIFACT_URL, result)
         self.assertLessEqual(len(result), GITHUB_COMMENT_LIMIT)
 
 
