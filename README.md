@@ -32,8 +32,8 @@ or reviewer to comment `/redo` on it. Their comment starts the run.
 1. [Open a new issue](https://github.com/clang-tidy-infra/CTIT/issues/new/choose) using the **Integration test**
    template.
 2. Replace the issue body with your request (see the format below).
-3. Make sure the issue has the `cpp` or `c` label. The template adds `cpp`
-   automatically. Adding the label is what starts the run.
+3. Make sure the issue has the `test-cpp` or `test-c` label. The template adds
+   `test-cpp` automatically. Adding the label is what starts the run.
 4. Wait for the results. CTIT posts a "Run started" comment with a link to the
    workflow run, and replaces it with the report when the run finishes.
 
@@ -104,8 +104,8 @@ artifact.
 
 - To run again, for example after pushing new commits to the pull request,
   comment `/redo` on the issue.
-- To stop the nightly watcher from re-testing a pull request, remove the `cpp`
-  and `c` labels from its issue (see
+- To stop the nightly watcher from re-testing a pull request, remove the
+  `test-cpp` and `test-c` labels from its issue (see
   [Scheduled automation](#scheduled-automation)).
 
 ### Manual runs from the Actions tab

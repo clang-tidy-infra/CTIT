@@ -28,8 +28,9 @@ SUMMARY_FILE = "nightly-summary.md"
 _MARKER_RE: re.Pattern[str] = re.compile(
     r"<!-- ctit-(?:nightly|run)(?:\s+sha=([0-9a-fA-F]{7,40}))?\s*-->"
 )
-# Labels check-tester.yaml listens on; adding one starts an analysis run.
-TRIGGER_LABELS = frozenset({"cpp", "c"})
+# Label check-tester.yaml listens on, per check language; adding one starts an
+# analysis run.
+TRIGGER_LABELS: dict[str, str] = {"cpp": "test-cpp", "c": "test-c"}
 # Matches the PR link on the first line of an integration-test issue.
 _PR_URL_RE: re.Pattern[str] = re.compile(r"^https?://\S*/pull/(\d+)/?$")
 
@@ -169,13 +170,13 @@ def plan_actions(
         issue: IssueRef | None = index.get((target.pr_number, target.check_name))
         if issue is None:
             kind, reason = CREATE, "no issue tracks this PR and check yet"
-        elif not issue.labels & TRIGGER_LABELS:
-            # Dropping the cpp/c label is how a maintainer mutes an issue, and
+        elif issue.labels.isdisjoint(TRIGGER_LABELS.values()):
+            # Dropping the trigger label is how a maintainer mutes an issue, and
             # re-adding it would authorize check-tester against the issue
             # author rather than against this watcher. Checked before the probe
             # so a muted issue costs no request.
             actions.append(
-                Action(SKIP, target, "issue has no cpp/c label", issue.number)
+                Action(SKIP, target, "issue has no test-cpp/test-c label", issue.number)
             )
             continue
         else:
@@ -302,7 +303,10 @@ def create_issue(client: GitHubClient, repo: str, target: CheckTarget) -> int:
 
 
 def add_label(client: GitHubClient, repo: str, number: int, language: str) -> None:
-    client.post(f"repos/{repo}/issues/{number}/labels", {"labels": [language]})
+    client.post(
+        f"repos/{repo}/issues/{number}/labels",
+        {"labels": [TRIGGER_LABELS[language]]},
+    )
 
 
 def post_redo(
