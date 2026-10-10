@@ -128,8 +128,7 @@ def build_project(build_dir: str, targets: list[str]) -> None:
 
 
 def check_flags(check_name: str) -> list[str]:
-    """Return the run-clang-tidy flags the enabled checks need to report anything.
-    """
+    """Return the run-clang-tidy flags the enabled checks need to report anything."""
     flags: list[str] = []
     for check in check_name.split(","):
         check = check.strip()
