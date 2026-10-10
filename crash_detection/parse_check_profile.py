@@ -72,16 +72,23 @@ def load_profiles(log_dir: str) -> dict[str, tuple[float, dict[str, float]]]:
     return results
 
 
+def combine_profiles(
+    profiles: dict[str, tuple[float, dict[str, float]]],
+) -> dict[str, float]:
+    """Return {check: wall_seconds} summed over every project."""
+    combined: dict[str, float] = {}
+    for _, checks in profiles.values():
+        for check, wall in checks.items():
+            combined[check] = combined.get(check, 0.0) + wall
+    return combined
+
+
 def write_markdown(
     profiles: dict[str, tuple[float, dict[str, float]]],
     output: str,
     output_detailed: str | None = None,
 ) -> None:
-    combined: dict[str, float] = {}
-    for _, checks in profiles.values():
-        for check, wall in checks.items():
-            combined[check] = combined.get(check, 0.0) + wall
-
+    combined = combine_profiles(profiles)
     total = sum(combined.values())
 
     lines: list[str] = ["## Check Timings Profile\n\n"]
