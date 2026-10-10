@@ -8,6 +8,7 @@ from crash_detection.detect_crashes import Crash
 from testers.generate_report import (
     MAX_CRASH_EXAMPLES,
     Issue,
+    Note,
     ProjectResult,
     generate_markdown,
     generate_report,
@@ -351,6 +352,87 @@ class TestWriteSummaryTable(unittest.TestCase):
         output = f.getvalue()
         self.assertIn("Clang-Tidy Integration Test Results", output)
         self.assertIn("| Project | Status |", output)
+
+
+LIFETIME_LOG = (
+    "/w/test_projects/proj/src/a.cpp:10:5: warning: object whose reference is "
+    "captured does not live long enough "
+    "[clang-diagnostic-lifetime-safety-use-after-scope]\n"
+    "   10 |   v = s;\n"
+    "      |   ^\n"
+    "/w/test_projects/proj/src/a.cpp:11:3: note: destroyed here\n"
+    "   11 |   }\n"
+    "      |   ^\n"
+    "/usr/include/c++/string_view:20:1: note: expanded from macro 'X'\n"
+    "/w/test_projects/proj/src/a.cpp:12:8: note: later used here\n"
+    "/w/test_projects/proj/src/b.cpp:3:1: warning: an exception may be thrown "
+    "in function 'f' which should not throw exceptions [bugprone-exception-escape]\n"
+    "/w/test_projects/proj/src/b.cpp:5:3: note: frame #0: unhandled exception of "
+    "type 'int' may be thrown in function 'f' here\n"
+)
+
+
+class TestNotes(unittest.TestCase):
+    def _parse(self, content):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            path = os.path.join(tmp_dir, "proj.log")
+            with open(path, "w") as f:
+                f.write(content)
+            return parse_log_file(path)
+
+    def test_collects_lifetime_safety_path(self):
+        result = self._parse(LIFETIME_LOG)
+        notes = result.issues[0].notes
+        self.assertEqual(
+            [(n.file_path, n.line, n.in_project) for n in notes],
+            [
+                ("src/a.cpp", 11, True),
+                ("/usr/include/c++/string_view", 20, False),
+                ("src/a.cpp", 12, True),
+            ],
+        )
+        self.assertEqual(notes[0].message, "destroyed here")
+
+    def test_collects_notes_of_any_check(self):
+        result = self._parse(LIFETIME_LOG)
+        self.assertEqual(result.issues[1].check_name, "bugprone-exception-escape")
+        self.assertEqual(
+            [(n.file_path, n.line) for n in result.issues[1].notes], [("src/b.cpp", 5)]
+        )
+
+    def test_notes_before_any_warning_are_ignored(self):
+        result = self._parse("/w/test_projects/proj/a.cpp:1:1: note: stray\n")
+        self.assertEqual(result.issues, [])
+
+    def test_duplicate_warning_does_not_repeat_its_path(self):
+        result = self._parse(LIFETIME_LOG + LIFETIME_LOG)
+        self.assertEqual(len(result.issues), 2)
+        self.assertEqual(len(result.issues[0].notes), 3)
+
+    def test_renders_path_as_numbered_list(self):
+        result = self._parse(LIFETIME_LOG)
+        f = io.StringIO()
+        write_project_details(f, result, {"proj": "https://example.com/blob/abc"})
+        output = f.getvalue()
+        self.assertIn(
+            "Notes:\n"
+            "1. [src/a.cpp:11](https://example.com/blob/abc/src/a.cpp#L11) "
+            "destroyed here\n"
+            "2. `/usr/include/c++/string_view:20` expanded from macro 'X'\n"
+            "3. [src/a.cpp:12](https://example.com/blob/abc/src/a.cpp#L12) "
+            "later used here\n",
+            output,
+        )
+        self.assertEqual(output.count("Notes:"), 2)
+
+    def test_escapes_html_in_notes(self):
+        issue = Issue(
+            "a.cpp", 1, 1, "warning", "msg", "clang-diagnostic-lifetime-safety-x"
+        )
+        issue.notes.append(Note("a.cpp", 1, "Calling 'f<int>' & more", True))
+        f = io.StringIO()
+        write_project_details(f, ProjectResult(name="p", issues=[issue]), {})
+        self.assertIn("1. `a.cpp:1` Calling 'f&lt;int&gt;' &amp; more\n", f.getvalue())
 
 
 class TestWriteProjectDetails(unittest.TestCase):
