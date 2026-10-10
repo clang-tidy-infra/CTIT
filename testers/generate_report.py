@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import glob
+import html
 import os
 import re
 import sys
@@ -20,6 +21,14 @@ MAX_CRASH_EXAMPLES = 3
 
 
 @dataclass
+class Note:
+    file_path: str
+    line: int
+    message: str
+    in_project: bool
+
+
+@dataclass
 class Issue:
     """Represents a single static analysis issue."""
 
@@ -30,6 +39,7 @@ class Issue:
     message: str
     check_name: str
     context: str | None = None
+    notes: list[Note] = field(default_factory=list)
 
 
 @dataclass
@@ -78,6 +88,11 @@ def get_relative_path(full_path: str, project_name: str) -> str:
     Returns:
         The relative path string.
     """
+    return _project_path(full_path, project_name) or os.path.basename(full_path)
+
+
+def _project_path(full_path: str, project_name: str) -> str | None:
+    """Returns the path relative to the project, or None outside of it."""
     markers = [
         f"test_projects/{project_name}/",
         f"test-projects/{project_name}/",
@@ -86,7 +101,7 @@ def get_relative_path(full_path: str, project_name: str) -> str:
     for marker in markers:
         if marker in full_path:
             return full_path.split(marker, 1)[1]
-    return os.path.basename(full_path)
+    return None
 
 
 def parse_log_file(log_path: str) -> ProjectResult:
@@ -105,9 +120,12 @@ def parse_log_file(log_path: str) -> ProjectResult:
     # Regex to capture standard clang-tidy output format:
     # Example: /path/to/file.cpp:10:5: warning: message [check-name]
     issue_pattern = re.compile(r"^(.+):(\d+):(\d+): (warning|error): (.+) \[(.+)\]$")
+    note_pattern = re.compile(r"^(.+):(\d+):\d+: note: (.+)$")
 
     # Deduplicate by (file_path, line, col, check_name)
     seen: set[tuple[str, int, int, str]] = set()
+    # The diagnostic whose notes are being collected, if any.
+    noted: Issue | None = None
 
     try:
         with open(log_path, errors="replace") as f:
@@ -129,8 +147,29 @@ def parse_log_file(log_path: str) -> ProjectResult:
                 result.has_crash = True
                 continue
 
+            # An unlocated diagnostic starts a new note group, even if not saved.
+            if re.match(r"^(?:warning|error|fatal error):", line):
+                noted = None
+                continue
+
+            note = note_pattern.match(line)
+            if note:
+                if noted is not None:
+                    raw_path, line_num, message = note.groups()
+                    path = _project_path(raw_path, project_name)
+                    noted.notes.append(
+                        Note(
+                            file_path=path or raw_path,
+                            line=int(line_num),
+                            message=message,
+                            in_project=path is not None,
+                        )
+                    )
+                continue
+
             match = issue_pattern.match(line)
             if match:
+                noted = None
                 raw_path, line_num, col_num, severity, message, check_name = (
                     match.groups()
                 )
@@ -166,6 +205,7 @@ def parse_log_file(log_path: str) -> ProjectResult:
                     context=context_code,
                 )
                 result.issues.append(issue)
+                noted = issue
 
     except OSError as e:
         print(f"Error reading {log_path}: {e}", file=sys.stderr)
@@ -223,8 +263,25 @@ def write_project_details(
 
         if issue.context:
             f.write(f"  ```cpp\n  {issue.context}\n  ```\n")
+        f.write(format_notes(issue.notes, base_url))
 
     f.write("\n</details>\n")
+
+
+def format_notes(notes: list[Note], base_url: str | None) -> str:
+    """Returns the notes of a diagnostic as a numbered list."""
+    if not notes:
+        return ""
+    lines = ["Notes:\n"]
+    for number, note in enumerate(notes, 1):
+        location = f"{note.file_path}:{note.line}"
+        if note.in_project and base_url:
+            location = f"[{location}]({base_url}/{note.file_path}#L{note.line})"
+        else:
+            location = f"`{location}`"
+        message = html.escape(note.message, quote=False)
+        lines.append(f"{number}. {location} {message}\n")
+    return "".join(lines)
 
 
 def write_crash_details(f: TextIO, result: ProjectResult) -> None:

@@ -9,6 +9,7 @@ from testers.analyze import (
     analyze_project,
     build_project,
     check_clang_compiler,
+    check_flags,
     configure_cmake,
     configure_project,
     find_run_tidy_script,
@@ -146,6 +147,49 @@ class TestBuildProject(unittest.TestCase):
         self.assertEqual(args, ["ninja", "-C", "/build", "clang", "clang-tidy"])
 
 
+class TestCheckFlags(unittest.TestCase):
+    def test_regular_checks_need_nothing(self):
+        self.assertEqual(check_flags("bugprone-*,-bugprone-foo"), [])
+        self.assertEqual(check_flags("*,-clang-analyzer-*"), [])
+
+    def test_compiler_errors_do_not_change_warning_policy(self):
+        for checks in (
+            "clang-diagnostic-error",
+            "bugprone-argument-comment, clang-diagnostic-error",
+        ):
+            with self.subTest(checks=checks):
+                self.assertEqual(check_flags(checks), ["-allow-no-checks"])
+
+    def test_diagnostic_group_is_enabled(self):
+        self.assertEqual(
+            check_flags("clang-diagnostic-lifetime-safety*"),
+            [
+                "-allow-no-checks",
+                "-extra-arg=-Wlifetime-safety",
+                "-extra-arg=-Wno-error=lifetime-safety",
+            ],
+        )
+        for checks in (
+            "clang-diagnostic-lifetime-safety-use-after-scope",
+            "clang-diagnostic-lifetime-safety-use-after-*",
+        ):
+            with self.subTest(checks=checks):
+                self.assertEqual(
+                    check_flags(checks),
+                    [
+                        "-allow-no-checks",
+                        "-extra-arg=-Wlifetime-safety",
+                        "-extra-arg=-Wno-error=lifetime-safety",
+                    ],
+                )
+
+    def test_unmappable_diagnostic_globs_are_skipped(self):
+        self.assertEqual(check_flags("clang-diagnostic-*"), [])
+        self.assertEqual(check_flags("clang-diagnostic-*lifetime*"), [])
+        self.assertEqual(check_flags("-clang-diagnostic-unused-variable"), [])
+        self.assertEqual(check_flags("-clang-diagnostic-lifetime-safety*"), [])
+
+
 class TestRunClangTidy(unittest.TestCase):
     def _make_mock_proc(self, lines: list[str]) -> MagicMock:
         proc = MagicMock()
@@ -239,6 +283,27 @@ class TestRunClangTidy(unittest.TestCase):
 
             args = mock_popen.call_args[0][0]
             self.assertIn("-config=VariableCase: camelBack", args)
+
+    @patch("testers.analyze.subprocess.Popen")
+    def test_passes_check_flags(self, mock_popen):
+        mock_popen.return_value = self._make_mock_proc([])
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            run_clang_tidy(
+                "/bin/clang-tidy",
+                "/script/run-clang-tidy.py",
+                "/build",
+                "clang-diagnostic-lifetime-safety*",
+                "/src",
+                "src/.*",
+                os.path.join(tmp_dir, "test.log"),
+                os.path.join(tmp_dir, "progress.log"),
+                None,
+            )
+
+        args = mock_popen.call_args[0][0]
+        self.assertIn("-extra-arg=-Wlifetime-safety", args)
+        # The file regex must stay the last, positional argument.
+        self.assertEqual(args[-1], "^/src/src/.*")
 
     @patch("testers.analyze.time.monotonic", side_effect=[100.0, 112.345678])
     @patch("testers.analyze.subprocess.Popen")

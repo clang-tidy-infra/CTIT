@@ -127,6 +127,34 @@ def build_project(build_dir: str, targets: list[str]) -> None:
     subprocess.run(["ninja", "-C", build_dir] + targets, check=True)
 
 
+def check_flags(check_name: str) -> list[str]:
+    """Return the run-clang-tidy flags the enabled checks need to report anything."""
+    flags: list[str] = []
+    for check in check_name.split(","):
+        check = check.strip()
+        if check == "clang-diagnostic-error":
+            # Compiler errors need no warning flag; -Werror would promote warnings.
+            flags.append("-allow-no-checks")
+            continue
+        if check.startswith("clang-diagnostic-lifetime-safety"):
+            # Enable the known parent group; -checks retains the output filter.
+            flags += [
+                "-allow-no-checks",
+                "-extra-arg=-Wlifetime-safety",
+                "-extra-arg=-Wno-error=lifetime-safety",
+            ]
+            continue
+        if check.startswith("clang-diagnostic-"):
+            group = check.removeprefix("clang-diagnostic-").rstrip("*").rstrip("-")
+            if group and "*" not in group:
+                flags += [
+                    "-allow-no-checks",
+                    f"-extra-arg=-W{group}",
+                    f"-extra-arg=-Wno-error={group}",
+                ]
+    return list(dict.fromkeys(flags))
+
+
 def run_clang_tidy(
     clang_tidy_bin: str,
     run_tidy_script: str,
@@ -151,6 +179,7 @@ def run_clang_tidy(
         build_dir,
         f"-checks=-*,{check_name}",
         "-quiet",
+        *check_flags(check_name),
     ]
 
     jobs = os.environ.get("CTIT_JOBS")
