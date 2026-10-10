@@ -133,8 +133,19 @@ def check_flags(check_name: str) -> list[str]:
     flags: list[str] = []
     for check in check_name.split(","):
         check = check.strip()
+        if check == "clang-diagnostic-error":
+            # Compiler errors need no warning flag; -Werror would promote warnings.
+            flags.append("-allow-no-checks")
+            continue
+        if check.startswith("clang-diagnostic-lifetime-safety"):
+            # Enable the known parent group; -checks retains the output filter.
+            flags += [
+                "-allow-no-checks",
+                "-extra-arg=-Wlifetime-safety",
+                "-extra-arg=-Wno-error=lifetime-safety",
+            ]
+            continue
         if check.startswith("clang-diagnostic-"):
-            # clang-diagnostic-lifetime-safety* enables the lifetime-safety group.
             group = check.removeprefix("clang-diagnostic-").rstrip("*").rstrip("-")
             if group and "*" not in group:
                 flags += [

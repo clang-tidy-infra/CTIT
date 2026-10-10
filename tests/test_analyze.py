@@ -152,6 +152,14 @@ class TestCheckFlags(unittest.TestCase):
         self.assertEqual(check_flags("bugprone-*,-bugprone-foo"), [])
         self.assertEqual(check_flags("*,-clang-analyzer-*"), [])
 
+    def test_compiler_errors_do_not_change_warning_policy(self):
+        for checks in (
+            "clang-diagnostic-error",
+            "bugprone-argument-comment, clang-diagnostic-error",
+        ):
+            with self.subTest(checks=checks):
+                self.assertEqual(check_flags(checks), ["-allow-no-checks"])
+
     def test_diagnostic_group_is_enabled(self):
         self.assertEqual(
             check_flags("clang-diagnostic-lifetime-safety*"),
@@ -161,19 +169,25 @@ class TestCheckFlags(unittest.TestCase):
                 "-extra-arg=-Wno-error=lifetime-safety",
             ],
         )
-        self.assertEqual(
-            check_flags("clang-diagnostic-lifetime-safety-use-after-scope"),
-            [
-                "-allow-no-checks",
-                "-extra-arg=-Wlifetime-safety-use-after-scope",
-                "-extra-arg=-Wno-error=lifetime-safety-use-after-scope",
-            ],
-        )
+        for checks in (
+            "clang-diagnostic-lifetime-safety-use-after-scope",
+            "clang-diagnostic-lifetime-safety-use-after-*",
+        ):
+            with self.subTest(checks=checks):
+                self.assertEqual(
+                    check_flags(checks),
+                    [
+                        "-allow-no-checks",
+                        "-extra-arg=-Wlifetime-safety",
+                        "-extra-arg=-Wno-error=lifetime-safety",
+                    ],
+                )
 
     def test_unmappable_diagnostic_globs_are_skipped(self):
         self.assertEqual(check_flags("clang-diagnostic-*"), [])
         self.assertEqual(check_flags("clang-diagnostic-*lifetime*"), [])
         self.assertEqual(check_flags("-clang-diagnostic-unused-variable"), [])
+        self.assertEqual(check_flags("-clang-diagnostic-lifetime-safety*"), [])
 
 
 class TestRunClangTidy(unittest.TestCase):

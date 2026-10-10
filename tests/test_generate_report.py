@@ -404,6 +404,28 @@ class TestNotes(unittest.TestCase):
         result = self._parse("/w/test_projects/proj/a.cpp:1:1: note: stray\n")
         self.assertEqual(result.issues, [])
 
+    def test_unlocated_diagnostic_ends_previous_notes(self):
+        for severity in ("warning", "error", "fatal error"):
+            with self.subTest(severity=severity):
+                result = self._parse(
+                    "/w/test_projects/proj/lib/pathmatch.h:285:30: warning: "
+                    "implicit this should be marked lifetimebound [clang-diagnostic-test]\n"
+                    "/w/test_projects/proj/lib/pathmatch.h:287:16: note: param returned here\n"
+                    f"{severity}: diagnostic without a location [clang-diagnostic-test]\n"
+                    "/w/test_projects/proj/test/testvaarg.cpp:363:1: note: param returned here\n"
+                    "/w/test_projects/proj/test/fixture.h:344:229: note: expanded from macro\n"
+                    "/w/test_projects/proj/src/next.cpp:10:5: warning: next [clang-diagnostic-test]\n"
+                    "/w/test_projects/proj/src/next.cpp:12:8: note: later used here\n"
+                )
+                self.assertEqual(len(result.issues), 2)
+                self.assertEqual(
+                    [
+                        [(n.file_path, n.line) for n in issue.notes]
+                        for issue in result.issues
+                    ],
+                    [[("lib/pathmatch.h", 287)], [("src/next.cpp", 12)]],
+                )
+
     def test_duplicate_warning_does_not_repeat_its_path(self):
         result = self._parse(LIFETIME_LOG + LIFETIME_LOG)
         self.assertEqual(len(result.issues), 2)

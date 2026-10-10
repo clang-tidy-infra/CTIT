@@ -147,6 +147,11 @@ def parse_log_file(log_path: str) -> ProjectResult:
                 result.has_crash = True
                 continue
 
+            # An unlocated diagnostic starts a new note group, even if not saved.
+            if re.match(r"^(?:warning|error|fatal error):", line):
+                noted = None
+                continue
+
             note = note_pattern.match(line)
             if note:
                 if noted is not None:
