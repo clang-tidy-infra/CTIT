@@ -6,4 +6,5 @@ rules:
   secrets-outside-env:
     ignore:
       - check-tester.yaml
+      - daily-check-timings.yaml
       - update-llvm.yaml
