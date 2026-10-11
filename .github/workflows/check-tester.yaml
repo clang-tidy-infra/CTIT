@@ -212,6 +212,7 @@ jobs:
 
       - name: Run baseline when check exists
         if: env.COMPARE_BASELINE == 'true'
+        shell: bash
         run: |
           llvm-project/build/bin/clang-tidy --list-checks --checks='*' > logs/baseline-checks.txt
           if [[ ",$CHECK_NAME" == *,clang-diagnostic-lifetime-safety* ]] || sed 's/^[[:space:]]*//' logs/baseline-checks.txt | grep -Fx -- "$CHECK_NAME" > /dev/null; then
@@ -274,7 +275,7 @@ jobs:
       - name: Analyze false positives with Cursor agent
         if: inputs.skip_ai_analysis != true
         continue-on-error: true
-        timeout-minutes: 30
+        timeout-minutes: 45
         env:
           CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
         run: |
