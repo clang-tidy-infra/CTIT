@@ -76,7 +76,14 @@ def parse_body(body: str) -> ParseResult:
         pr_link=pr_link,
         check_name=check_name,
         tidy_config=tidy_config,
-        compare_baseline=bool(pr_link) and "/baseline" in lines[1:],
+        compare_baseline=bool(pr_link)
+        and (
+            "/baseline" in lines[1:]
+            or any(
+                check.startswith("clang-diagnostic-lifetime-safety")
+                for check in check_name.split(",")
+            )
+        ),
     )
 
 

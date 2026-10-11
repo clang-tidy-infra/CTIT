@@ -71,7 +71,7 @@
         "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"
       ],
       "build_targets": ["curl"],
-      "file_regex": "(?!tests/.*\\.c$).*"
+      "file_regex": "(?!(?:build/)?tests/.*\\.c$).*"
     },
     "stdexec": {
       "url": "https://github.com/NVIDIA/stdexec.git",
@@ -141,6 +141,7 @@
         "-DASSIMP_BUILD_ASSIMP_TOOLS=OFF",
         "-DASSIMP_BUILD_ZLIB=ON",
         "-DASSIMP_INSTALL=OFF",
+        "-DASSIMP_WARNINGS_AS_ERRORS=OFF",
         "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"
       ],
       "file_regex": "(?!contrib/).*"

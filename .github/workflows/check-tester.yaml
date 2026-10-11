@@ -214,7 +214,7 @@ jobs:
         if: env.COMPARE_BASELINE == 'true'
         run: |
           llvm-project/build/bin/clang-tidy --list-checks --checks='*' > logs/baseline-checks.txt
-          if sed 's/^[[:space:]]*//' logs/baseline-checks.txt | grep -Fx -- "$CHECK_NAME" > /dev/null; then
+          if [[ ",$CHECK_NAME" == *,clang-diagnostic-lifetime-safety* ]] || sed 's/^[[:space:]]*//' logs/baseline-checks.txt | grep -Fx -- "$CHECK_NAME" > /dev/null; then
             ./ctit.py analyze --check-name "$CHECK_NAME" \
               --clang-tidy-binary llvm-project/build/bin/clang-tidy \
               --run-tidy-script logs/run-clang-tidy.py \
