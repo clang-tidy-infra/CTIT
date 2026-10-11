@@ -75,6 +75,17 @@ jobs:
       - name: Parse check timings profile
         run: python3 crash_detection/parse_check_profile.py --log-dir logs/ --output profile-report.md
 
+      - name: Generate public timings record
+        run: >
+          python3 -m crash_detection.timings_result
+          --log-dir logs/
+          --llvm-revision "$(git -C llvm-project rev-parse HEAD)"
+          --runner "$RUNNER_NAME"
+          --runner-arch "$RUNNER_ARCH"
+          --run-id "$GITHUB_RUN_ID"
+          --run-attempt "$GITHUB_RUN_ATTEMPT"
+          --output ctit-timings.json
+
       - name: Post check timings to tracking issue
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -100,3 +111,31 @@ jobs:
             profile-report.md
             profile-report-detailed.md
             check-timings-comment.md
+            ctit-timings.json
+
+      - name: Checkout public results repository
+        if: always() && hashFiles('ctit-timings.json') != '' && vars.CTIT_RESULTS_REPOSITORY != ''
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ vars.CTIT_RESULTS_REPOSITORY }}
+          token: ${{ secrets.CTIT_RESULTS_TOKEN }}
+          path: ctit-results
+          persist-credentials: false
+
+      - name: Publish public timings record
+        if: always() && hashFiles('ctit-timings.json') != '' && vars.CTIT_RESULTS_REPOSITORY != ''
+        working-directory: ctit-results
+        env:
+          GH_TOKEN: ${{ secrets.CTIT_RESULTS_TOKEN }}
+        run: |
+          DATE=$(python3 -c 'import json; print(json.load(open("../ctit-timings.json"))["date"])')
+          RECORD_PATH="timings/$(echo "$DATE" | cut -c1-7 | tr - /)/$DATE-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-$RUNNER_ARCH.json"
+          mkdir -p "$(dirname "$RECORD_PATH")"
+          cp ../ctit-timings.json "$RECORD_PATH"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          gh auth setup-git
+          git add "$RECORD_PATH"
+          git commit -m "timings: run $GITHUB_RUN_ID attempt $GITHUB_RUN_ATTEMPT $RUNNER_ARCH"
+          git pull --rebase
+          git push
