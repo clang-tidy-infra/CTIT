@@ -34,6 +34,23 @@ For a check named `<module>-<rest>` (e.g. `bugprone-argument-comment`):
 - **Docs** - `llvm-project/clang-tools-extra/docs/clang-tidy/checks/<module>/<rest>.rst`
   (e.g. `bugprone/argument-comment.rst`).
 
+For `clang-diagnostic-lifetime-safety-*`, the warning comes from the **Clang
+compiler's LifetimeSafety analysis**, not a clang-tidy check. Use these paths
+instead (all relative to `llvm-project/`):
+
+- **Docs** - `clang/docs/LifetimeSafety.md`; annotation semantics are documented
+  in `clang/include/clang/Basic/AttrDocs.td`.
+- **Diagnostic text and groups** - `clang/include/clang/Basic/DiagnosticSemaKinds.td`
+  and `clang/include/clang/Basic/DiagnosticGroups.td`.
+- **Implementation** - `clang/lib/Analysis/LifetimeSafety/` (especially
+  `Checker.cpp`, `FactsGenerator.cpp`, and `LifetimeAnnotations.cpp`) and
+  `clang/lib/Sema/SemaLifetimeSafety.h`.
+- **Regression examples** - `clang/test/Sema/LifetimeSafety/`. CTIT excludes test
+  files when applying PR patches, so these tests may not include the PR's changes.
+
+Use the checked-out implementation and diagnostic text to resolve gaps in the
+documentation. Do not assume upstream's latest behavior matches the tested revision.
+
 ## Analysis Procedure
 
 The file `report.md` already exists as a **pre-filled table with one row per
@@ -70,6 +87,51 @@ Process rows top-to-bottom. For each row:
 
 When all rows are filled, replace the three `TBD` counts in the
 `**Summary**: TBD True Positives, TBD False Positives, TBD Uncertain ...` line.
+
+## LifetimeSafety Verdicts
+
+CTIT enables `-Wlifetime-safety-all`, which includes safety warnings, annotation
+suggestions, and annotation validations. **A TP does not always mean a memory
+safety bug.** Identify the diagnostic's category before judging it:
+
+- **Safety warnings** (`use-after-scope`, `use-after-free`, `return-stack-addr`,
+  `dangling-field`, `dangling-global`, `invalidation`, and their variants): trace
+  the owning storage, the pointer/reference/view borrowing it, and the relevant
+  destruction, escape, invalidation, or later use. A real dangling return or
+  escape can be TP without a demonstrated dereference; apply the specific
+  diagnostic's rule, not a universal requirement for a use-after-free crash.
+- **Annotation suggestions** (`*-suggestions`, including constructor suggestions):
+  judge whether the returned value or constructed object actually borrows from
+  the indicated parameter or implicit `this`. A correct missing lifetime contract
+  is TP even when all observed callers are safe. A by-value copy that owns its
+  storage is not itself a borrow. Check the suggested contract, not merely the
+  presence or absence of `[[clang::lifetimebound]]`.
+- **Annotation validations**: check `noescape` against actual escape behavior;
+  check misplaced/inapplicable `lifetimebound` against declaration visibility
+  and type semantics. For `lifetimebound-violation`, inability of the analysis
+  to verify a contract is not proof that the contract is wrong. Inspect the
+  implementation; use Uncertain when you cannot establish correctness or a violation.
+
+Read the diagnostic's **notes** in `issue.md` together as evidence of the reported
+path, not as independent warnings. Follow referenced declarations, constructors,
+destructors, callees, macro expansions, and template instantiations beyond the
+initial source window when needed. Consult `logs/<project>.log` for context or
+fix-it details omitted from the Markdown. Judge the warning and the fix-it
+separately: an incorrect insertion location need not make the warning itself FP;
+mention that distinction in the rationale.
+
+Do not classify `*-moved`, lambda-capture, or invalidation warnings as FP solely
+because the analysis documents limitations. Check whether ownership transfer
+really preserves the borrowed storage, whether a callback resets the field in
+time, and the actual container/operation's invalidation rules. `std::move` alone
+does not prove that an alias remains valid. Intentional borrowing alone is also
+not evidence of safety. If the necessary ownership or control-flow evidence is
+unavailable, use Uncertain rather than assume safety or a bug.
+
+In the rationale, name the lifetime relationship or annotation contract and the
+source evidence that establishes or contradicts it. Baseline presence and warning
+count changes do not establish TP/FP. Reuse `Same as #N` only when the relevant
+ownership/annotation evidence is also equivalent, not just the diagnostic name.
 
 ## Hard Rules
 
