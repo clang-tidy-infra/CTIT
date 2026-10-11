@@ -10,6 +10,8 @@ Algorithm:
 import argparse
 import sys
 
+from testers.generate_report import RESULTS_MARKER
+
 GITHUB_COMMENT_LIMIT = 65536
 _AI_MARKER = "AI False-Positive Analysis"
 
@@ -53,21 +55,26 @@ def slim_comment(content: str, artifact_url: str) -> str:
         f"\n\n[Full per-project details in workflow artifacts]({artifact_url})\n"
     )
 
-    spans = _find_details_blocks(content)
-    ai_spans = [(s, e) for s, e in spans if _AI_MARKER in content[s:e]]
+    marker = content.find(RESULTS_MARKER)
+    kept, results = (
+        ("", content) if marker == -1 else (content[:marker], content[marker:])
+    )
+
+    spans = _find_details_blocks(results)
+    ai_spans = [(s, e) for s, e in spans if _AI_MARKER in results[s:e]]
 
     # Step 2: drop AI analysis, keep per-project findings.
     if ai_spans:
-        candidate = _remove_spans(content, ai_spans).rstrip() + artifact_link
+        candidate = kept + _remove_spans(results, ai_spans).rstrip() + artifact_link
         if len(candidate) <= GITHUB_COMMENT_LIMIT:
             return candidate
 
     # Step 3: drop everything — keep summary table only.
-    first_details = content.find("<details>")
+    first_details = results.find("<details>")
     summary = (
-        content[:first_details].rstrip() if first_details != -1 else content.rstrip()
+        results[:first_details].rstrip() if first_details != -1 else results.rstrip()
     )
-    return summary + artifact_link
+    return kept + summary + artifact_link
 
 
 def main() -> None:
