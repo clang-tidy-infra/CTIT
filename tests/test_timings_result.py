@@ -62,7 +62,8 @@ class TestTimingsResult(unittest.TestCase):
             write_timings(_create(tmp_dir), output)
 
             with open(output) as stream:
-                saved = json.load(stream)
+                text = stream.read()
+            saved = json.loads(text)
             self.assertEqual(saved["date"], "2026-10-11")
             self.assertEqual(saved["github_run_id"], 42)
             self.assertEqual(saved["llvm_revision"], "abcdef1234")
@@ -78,6 +79,13 @@ class TestTimingsResult(unittest.TestCase):
                     "two": {"duration_seconds": 3.0, "check_seconds": 0.75},
                 },
             )
+            self.assertEqual(saved["check_names"], ["check-a", "check-b", "check-c"])
+            self.assertEqual(
+                saved["project_checks"],
+                {"one": [2.5, 1.0, None], "two": [0.25, None, 0.5]},
+            )
+            # One line per project, not one per number.
+            self.assertIn('"one": [2.5, 1.0, null]', text)
 
     def test_keeps_projects_without_profile(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -89,6 +97,20 @@ class TestTimingsResult(unittest.TestCase):
             self.assertIsNone(timings.projects["one"].duration_seconds)
             self.assertIsNone(timings.projects["crashed"].check_seconds)
             self.assertEqual(timings.checks, {"check-a": 1.0})
+            self.assertEqual(timings.project_checks, {"one": [1.0]})
+
+    def test_check_times_add_up_to_the_combined_times(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            _write_log(tmp_dir, "one", _profile({"check-a": 1.25, "check-b": 2.0}))
+            _write_log(tmp_dir, "two", _profile({"check-a": 0.5}))
+
+            timings = _create(tmp_dir)
+
+            for i, name in enumerate(timings.check_names):
+                total = sum(
+                    column[i] or 0.0 for column in timings.project_checks.values()
+                )
+                self.assertAlmostEqual(total, timings.checks[name])
 
     def test_unknown_machine_is_null(self):
         with tempfile.TemporaryDirectory() as tmp_dir:

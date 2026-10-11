@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Build the public JSON record for one daily check timings run.
 
-The record keeps the wall time of every clang-tidy check summed over all test
-projects, the same numbers as the comment on the tracking issue, and how long
-the analysis of each project took. The results repository stores one record
-per run under ``timings/``, so the timings can be followed day by day.
+The record keeps the wall time of every clang-tidy check in every test project,
+the same times summed over all projects as in the comment on the tracking
+issue, and how long the analysis of each project took. The results repository
+stores one record per run under ``timings/``, so the timings can be followed
+day by day.
 """
 
 from __future__ import annotations
@@ -47,6 +48,12 @@ class TimingsRun:
     projects: dict[str, ProjectTimings]
     # Wall time of each check summed over all projects.
     checks: dict[str, float]
+    # Wall time of each check in each project, stored by column to keep the
+    # record small: project_checks[project][i] is the time of check_names[i],
+    # or None if that check did not run on the project. Projects without a
+    # profile are left out.
+    check_names: list[str]
+    project_checks: dict[str, list[float | None]]
 
 
 def _read_log(path: Path) -> tuple[float | None, float, dict[str, float]]:
@@ -98,6 +105,7 @@ def create_timings(
     if not profiles:
         raise ValueError(f"no profiling data found in {log_dir}")
 
+    check_names = sorted({check for _, checks in profiles.values() for check in checks})
     return TimingsRun(
         date=date,
         github_run_id=int(github_run_id),
@@ -111,15 +119,36 @@ def create_timings(
         checks={
             check: round(wall, 2) for check, wall in combine_profiles(profiles).items()
         },
+        check_names=check_names,
+        project_checks={
+            project: [
+                round(checks[name], 2) if name in checks else None
+                for name in check_names
+            ]
+            for project, (_, checks) in profiles.items()
+        },
     )
+
+
+def format_timings(timings: TimingsRun) -> str:
+    """Return the record as indented JSON, with each project's column of check
+    times on one line instead of one line per number."""
+    data = asdict(timings)
+    columns: dict[str, list[float | None]] = data["project_checks"]
+    # json.dumps cannot indent only some lists, so each column is swapped for a
+    # placeholder string that cannot occur in the record, then put back.
+    placeholders = {project: f"\0{project}" for project in columns}
+    data["project_checks"] = placeholders
+    text = json.dumps(data, indent=2, sort_keys=True)
+    for project, placeholder in placeholders.items():
+        text = text.replace(json.dumps(placeholder), json.dumps(columns[project]))
+    return text + "\n"
 
 
 def write_timings(timings: TimingsRun, output: str) -> None:
     output_path = Path(output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    with output_path.open("w") as stream:
-        json.dump(asdict(timings), stream, indent=2, sort_keys=True)
-        stream.write("\n")
+    output_path.write_text(format_timings(timings))
 
 
 def main() -> None:
