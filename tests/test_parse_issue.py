@@ -28,6 +28,23 @@ class TestParseIssue(unittest.TestCase):
         result = parse_body("https://example.com/pr check\nOption: /baseline")
         self.assertFalse(result.compare_baseline)
 
+    def test_lifetime_baseline_defaults(self):
+        for checks, expected in (
+            ("clang-diagnostic-lifetime-safety*", True),
+            ("clang-diagnostic-lifetime-safety-use-after-scope", True),
+            ("clang-diagnostic-lifetime-safety-*suggestions", True),
+            ("bugprone-*,clang-diagnostic-lifetime-safety-noescape", True),
+            ("bugprone-*,-clang-diagnostic-lifetime-safety*", False),
+            ("clang-diagnostic-unused-variable", False),
+            ("bugprone-*", False),
+        ):
+            with self.subTest(checks=checks):
+                result = parse_body(f"https://example.com/pr {checks}")
+                self.assertEqual(result.compare_baseline, expected)
+                self.assertEqual(result.check_name, checks)
+                self.assertFalse(parse_body(checks).compare_baseline)
+                self.assertFalse(parse_body(f"{checks}\n/baseline").compare_baseline)
+
     def test_readability_naming_options(self):
         body = """
         https://github.com/llvm/llvm-project/pull/123 readability-identifier-naming

@@ -165,21 +165,23 @@ class TestCheckFlags(unittest.TestCase):
             check_flags("clang-diagnostic-lifetime-safety*"),
             [
                 "-allow-no-checks",
-                "-extra-arg=-Wlifetime-safety",
-                "-extra-arg=-Wno-error=lifetime-safety",
+                "-extra-arg=-Wlifetime-safety-all",
+                "-extra-arg=-Wno-error=lifetime-safety-all",
             ],
         )
         for checks in (
             "clang-diagnostic-lifetime-safety-use-after-scope",
             "clang-diagnostic-lifetime-safety-use-after-*",
+            "clang-diagnostic-lifetime-safety-*suggestions",
+            "clang-diagnostic-lifetime-safety-noescape",
         ):
             with self.subTest(checks=checks):
                 self.assertEqual(
                     check_flags(checks),
                     [
                         "-allow-no-checks",
-                        "-extra-arg=-Wlifetime-safety",
-                        "-extra-arg=-Wno-error=lifetime-safety",
+                        "-extra-arg=-Wlifetime-safety-all",
+                        "-extra-arg=-Wno-error=lifetime-safety-all",
                     ],
                 )
 
@@ -301,7 +303,7 @@ class TestRunClangTidy(unittest.TestCase):
             )
 
         args = mock_popen.call_args[0][0]
-        self.assertIn("-extra-arg=-Wlifetime-safety", args)
+        self.assertIn("-extra-arg=-Wlifetime-safety-all", args)
         # The file regex must stay the last, positional argument.
         self.assertEqual(args[-1], "^/src/src/.*")
 

@@ -140,8 +140,8 @@ def check_flags(check_name: str) -> list[str]:
             # Enable the known parent group; -checks retains the output filter.
             flags += [
                 "-allow-no-checks",
-                "-extra-arg=-Wlifetime-safety",
-                "-extra-arg=-Wno-error=lifetime-safety",
+                "-extra-arg=-Wlifetime-safety-all",
+                "-extra-arg=-Wno-error=lifetime-safety-all",
             ]
             continue
         if check.startswith("clang-diagnostic-"):
