@@ -1,0 +1,44 @@
+name: Close Finished Issues
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Report what would be closed without closing anything'
+        type: boolean
+        default: false
+
+permissions: {}
+
+jobs:
+  close-finished-issues:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - name: Checkout CTIT
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Close issues of merged or closed pull requests
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          DRY_RUN: ${{ inputs.dry_run && 'true' || 'false' }}
+        run: |
+          args=(--repo "$REPO" --summary-file close-summary.md)
+          if [ "$DRY_RUN" = true ]; then
+            args+=(--dry-run)
+          fi
+          python3 -m pr_watcher.close_finished_issues "${args[@]}"
+
+      - name: Create job summary
+        if: always() && hashFiles('close-summary.md') != ''
+        run: cat close-summary.md >> "$GITHUB_STEP_SUMMARY"

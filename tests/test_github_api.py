@@ -31,9 +31,14 @@ class TestGitHubClientRetries(unittest.TestCase):
             with self.assertRaises(GitHubError):
                 if method == "GET":
                     client.get("x")
+                elif method == "PATCH":
+                    client.patch("x", {})
                 else:
                     client.post("x", {})
         return len(calls)
+
+    def test_does_not_retry_patch_on_server_error(self):
+        self.assertEqual(self._attempts("PATCH", _http_error(502)), 1)
 
     def test_retries_get_on_server_error(self):
         self.assertEqual(self._attempts("GET", _http_error(502)), MAX_ATTEMPTS)

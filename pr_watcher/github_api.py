@@ -36,6 +36,9 @@ class GitHubClient:
     def post(self, path: str, payload: dict[str, Any]) -> Any:
         return self._request("POST", path, payload=payload)
 
+    def patch(self, path: str, payload: dict[str, Any]) -> Any:
+        return self._request("PATCH", path, payload=payload)
+
     def paginate(
         self,
         path: str,
