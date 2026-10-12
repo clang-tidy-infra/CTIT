@@ -66,6 +66,7 @@ class TestCtitCli(unittest.TestCase):
             config_path=CONFIG_FILE,
             skip_headers=False,
             profile=False,
+            tidy_args=[],
         )
 
     @patch("ctit.analyze")
@@ -89,6 +90,7 @@ class TestCtitCli(unittest.TestCase):
             config_path=CONFIG_FILE,
             skip_headers=False,
             profile=False,
+            tidy_args=[],
         )
 
     @patch("ctit.analyze")
@@ -114,6 +116,23 @@ class TestCtitCli(unittest.TestCase):
             config_path=CONFIG_FILE,
             skip_headers=False,
             profile=False,
+            tidy_args=[],
+        )
+
+    @patch("ctit.analyze")
+    def test_analyze_with_tidy_args(self, mock_analyze):
+        main(
+            [
+                "analyze",
+                "--check-name",
+                "bugprone-*",
+                "--tidy-args",
+                "-extra-arg=-std=c++20 '-extra-arg=-DMSG=a b'",
+            ]
+        )
+        self.assertEqual(
+            mock_analyze.call_args.kwargs["tidy_args"],
+            ["-extra-arg=-std=c++20", "-extra-arg=-DMSG=a b"],
         )
 
     @patch("ctit.generate_report")

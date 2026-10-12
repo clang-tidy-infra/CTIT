@@ -5,8 +5,9 @@ from __future__ import annotations
 import json
 import os
 import re
+import shlex
 from collections.abc import Iterator
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -54,6 +55,8 @@ class Run:
     artifact_url: str | None
     project_runs: list[ProjectRun]
     baseline: Baseline | None = None
+    # Extra run-clang-tidy flags of the run, e.g. ["-extra-arg=-std=c++20"].
+    tidy_args: list[str] = field(default_factory=list)
 
 
 def _parse_timestamp(value: str, name: str) -> datetime:
@@ -156,6 +159,7 @@ def create_result(
     artifact_url: str | None,
     baseline_revision: str | None = None,
     baseline_log_dir: str | None = None,
+    tidy_args: list[str] | None = None,
 ) -> Run:
     """Collect the metadata, project results, warnings, and TP/FP verdicts."""
     if status not in {"COMPLETED", "FAILED", "CANCELLED"}:
@@ -192,6 +196,7 @@ def create_result(
         artifact_url=artifact_url,
         project_runs=_read_project_runs(log_dir, report_path),
         baseline=baseline,
+        tidy_args=list(tidy_args or []),
     )
 
 
@@ -260,6 +265,7 @@ def main() -> None:
             _required_environment("LLVM_REVISION") if compare_baseline else None
         ),
         baseline_log_dir="logs/baseline" if has_baseline else None,
+        tidy_args=shlex.split(os.environ.get("TIDY_ARGS", "")),
     )
     write_result(result, OUTPUT_FILE)
     print(f"Run result generated: {OUTPUT_FILE}")

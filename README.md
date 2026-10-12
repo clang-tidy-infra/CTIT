@@ -44,6 +44,7 @@ or reviewer to comment `/redo` on it. Their comment starts the run.
 [OPTION_NAME: VALUE]
 [OPTION_NAME: VALUE]
 [/baseline]
+[/flags FLAG ...]
 ```
 
 | Part                 | Required | Description                                                                                                                                         |
@@ -52,6 +53,7 @@ or reviewer to comment `/redo` on it. Their comment starts the run.
 | `CHECK_NAME`         | Yes      | The clang-tidy check to run, for example `bugprone-argument-comment`. Glob patterns such as `bugprone-*` also work.                                 |
 | `OPTION_NAME: VALUE` | No       | Check options, one per line. CTIT adds the `CHECK_NAME.` prefix for you, so write `VariableCase`, not `readability-identifier-naming.VariableCase`. |
 | `/baseline`          | No       | Also run the check on unpatched LLVM `main` and list the diagnostics the PR adds or removes. Only works with a `PR_URL`.                            |
+| `/flags FLAG ...`    | No       | Extra `run-clang-tidy` flags, quoted like in a shell. Allowed: `-extra-arg`, `-extra-arg-before`, `-removed-arg`, `-header-filter`, `-exclude-header-filter`, `-line-filter`, `-source-filter`, each as `-NAME=VALUE`. |
 
 ### Examples
 
@@ -67,6 +69,14 @@ Test a pull request with check options:
 https://github.com/llvm/llvm-project/pull/123456 readability-identifier-naming
 VariableCase: camelBack
 VariablePrefix: v_
+```
+
+Test a pull request with extra flags, for example to build the projects as
+C++20 and report diagnostics in headers:
+
+```text
+https://github.com/llvm/llvm-project/pull/123456 modernize-use-ranges
+/flags -extra-arg=-std=c++20 -header-filter=.*
 ```
 
 Compare a pull request against the current behavior of the check on `main`:
@@ -120,6 +130,7 @@ these inputs:
 | `pr_link`          | Pull request URL. Leave empty to test unpatched LLVM.    |
 | `check_name`       | The check to run.                                        |
 | `extra_config`     | One check option, for example `VariableCase: camelBack`. |
+| `tidy_args`        | Extra `run-clang-tidy` flags, like `/flags`.             |
 | `compare_baseline` | Also run unpatched LLVM, like `/baseline`.               |
 | `skip_ai_analysis` | Skip the AI false-positive analysis step.                |
 
@@ -177,6 +188,13 @@ ctit analyze --check-name readability-identifier-naming \
   --tidy-config '{"CheckOptions": {"readability-identifier-naming.VariableCase": "camelBack"}}'
 ```
 
+Pass extra `run-clang-tidy` flags, quoted like in a shell:
+
+```bash
+ctit analyze --check-name modernize-use-ranges \
+  --tidy-args '-extra-arg=-std=c++20 -header-filter=.*'
+```
+
 ### Test a patched clang-tidy
 
 The `llvm-project` submodule is the LLVM revision CTIT tests against. To test a
@@ -218,7 +236,7 @@ Run `ctit <command> --help` for the full list of options.
 |------------------------|----------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `ctit clone`           | Clones the test projects at their pinned commits.                                                                                | `--work-dir` (default `test_projects`), `--config` (default: the bundled `projects.json`)                                                                        |
 | `ctit configure`       | Runs CMake for each project, builds required targets, and removes project `.clang-tidy` files so they cannot override the check. | `--work-dir`, `--config`                                                                                                                                         |
-| `ctit analyze`         | Runs the check on every project with `run-clang-tidy`.                                                                           | `--check-name` (required), `--clang-tidy-binary`, `--run-tidy-script`, `--tidy-config`, `--log-dir` (default `logs`), `--skip-headers`, `--enable-check-profile` |
+| `ctit analyze`         | Runs the check on every project with `run-clang-tidy`.                                                                           | `--check-name` (required), `--clang-tidy-binary`, `--run-tidy-script`, `--tidy-config`, `--tidy-args`, `--log-dir` (default `logs`), `--skip-headers`, `--enable-check-profile` |
 | `ctit report`          | Writes a Markdown report of all diagnostics.                                                                                     | `--log-dir`, `--output` (default `issue.md`), `--baseline-log-dir`, `--baseline-revision`                                                                        |
 | `ctit report-template` | Writes `report.md`, the table the AI agent fills in with true or false positive verdicts. See [AGENTS.md](AGENTS.md).            | `--log-dir`, `--output`                                                                                                                                          |
 

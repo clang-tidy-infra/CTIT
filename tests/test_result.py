@@ -177,6 +177,32 @@ class TestResult(unittest.TestCase):
             self.assertEqual(len(diagnostics), 1)
             self.assertEqual(diagnostics[0].verdict, "TP")
 
+    def test_records_tidy_args(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            result = create_result(
+                log_dir=tmp_dir,
+                report_path=None,
+                github_run_id="42",
+                github_run_attempt=1,
+                pr_url="",
+                llvm_revision="base",
+                check_name="check-a",
+                check_config="{}",
+                runner_arch="ARM64",
+                started_at="2026-09-12T01:00:00Z",
+                finished_at="2026-09-12T01:01:00Z",
+                duration_seconds=60.0,
+                status="COMPLETED",
+                artifact_url=None,
+                tidy_args=["-extra-arg=-std=c++20"],
+            )
+            output = os.path.join(tmp_dir, "run.json")
+            write_result(result, output)
+            with open(output) as stream:
+                self.assertEqual(
+                    json.load(stream)["tidy_args"], ["-extra-arg=-std=c++20"]
+                )
+
 
 if __name__ == "__main__":
     unittest.main()

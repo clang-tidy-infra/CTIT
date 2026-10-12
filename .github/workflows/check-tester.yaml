@@ -12,6 +12,9 @@ on:
       extra_config:
         description: 'Check options (e.g. VariableCase: camelBack)'
         required: false
+      tidy_args:
+        description: 'Extra run-clang-tidy flags, as with /flags (e.g. -extra-arg=-std=c++20)'
+        required: false
       skip_ai_analysis:
         description: 'Skip the AI false-positive analysis step'
         type: boolean
@@ -174,22 +177,38 @@ jobs:
         run: ./ctit.py clone --work-dir test_projects
 
       - name: Extract analysis inputs from issue body
+        # The issue body and the inputs are passed through the environment, so
+        # that the shell never runs any of their text.
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          INPUT_PR_LINK: ${{ inputs.pr_link }}
+          INPUT_CHECK_NAME: ${{ inputs.check_name }}
+          INPUT_EXTRA_CONFIG: ${{ inputs.extra_config }}
+          INPUT_TIDY_ARGS: ${{ inputs.tidy_args }}
+          INPUT_COMPARE_BASELINE: ${{ inputs.compare_baseline }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             {
-              echo "${{ github.event.inputs.pr_link }} ${{ github.event.inputs.check_name }}"
-              echo "${{ github.event.inputs.extra_config }}"
-              if [ "${{ inputs.compare_baseline }}" = true ]; then
+              printf '%s %s\n' "$INPUT_PR_LINK" "$INPUT_CHECK_NAME"
+              printf '%s\n' "$INPUT_EXTRA_CONFIG"
+              if [ "$INPUT_COMPARE_BASELINE" = true ]; then
                 echo /baseline
               fi
-            } | python3 parse_issue.py $GITHUB_ENV
+              if [ -n "$INPUT_TIDY_ARGS" ]; then
+                printf '/flags %s\n' "$INPUT_TIDY_ARGS"
+              fi
+            } | python3 parse_issue.py "$GITHUB_ENV"
           else
-            echo "${{ github.event.issue.body }}" | python3 parse_issue.py $GITHUB_ENV
+            printf '%s\n' "$ISSUE_BODY" | python3 parse_issue.py "$GITHUB_ENV"
           fi
 
+      - name: Show analysis inputs
+        run: |
           echo "PR_LINK: $PR_LINK"
           echo "CHECK_NAME: $CHECK_NAME"
           echo "TIDY_CONFIG: $TIDY_CONFIG"
+          echo "TIDY_ARGS: $TIDY_ARGS"
 
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
@@ -219,7 +238,8 @@ jobs:
             ./ctit.py analyze --check-name "$CHECK_NAME" \
               --clang-tidy-binary llvm-project/build/bin/clang-tidy \
               --run-tidy-script logs/run-clang-tidy.py \
-              --log-dir logs/baseline --tidy-config "$TIDY_CONFIG"
+              --log-dir logs/baseline --tidy-config "$TIDY_CONFIG" \
+              --tidy-args "$TIDY_ARGS"
             echo "HAS_BASELINE=true" >> "$GITHUB_ENV"
           fi
 
@@ -248,12 +268,14 @@ jobs:
         run: bash build.sh
 
       - name: Run clang-tidy on test projects
-        run: >
-          ./ctit.py analyze
-          --check-name "${{ env.CHECK_NAME }}"
-          --clang-tidy-binary llvm-project/build/bin/clang-tidy
-          --run-tidy-script logs/run-clang-tidy.py
-          ${{ env.TIDY_CONFIG && format('--tidy-config "{0}"', env.TIDY_CONFIG) || '' }}
+        shell: bash
+        run: |
+          ./ctit.py analyze \
+            --check-name "$CHECK_NAME" \
+            --clang-tidy-binary llvm-project/build/bin/clang-tidy \
+            --run-tidy-script logs/run-clang-tidy.py \
+            --tidy-config "$TIDY_CONFIG" \
+            --tidy-args "$TIDY_ARGS"
 
       - name: Generate warnings report
         shell: bash
@@ -349,12 +371,14 @@ jobs:
 
       - name: Prepare issue comment
         if: github.event_name != 'workflow_dispatch'
+        env:
+          ARTIFACT_URL: ${{ steps.artifact.outputs.artifact-url }}
         run: |
           if [ -n "${PR_HEAD_SHA:-}" ]; then
             printf '<!-- ctit-run sha=%s -->\n\n' "$PR_HEAD_SHA" | cat - issue.md > issue.tmp
             mv issue.tmp issue.md
           fi
-          python3 slim_comment.py issue.md "${{ steps.artifact.outputs.artifact-url }}"
+          python3 slim_comment.py issue.md "$ARTIFACT_URL"
 
       - name: Comment results on issue
         if: github.event_name != 'workflow_dispatch'
@@ -378,6 +402,10 @@ jobs:
             BODY="Run cancelled: https://github.com/$REPO/actions/runs/$RUN_ID (cc @$ACTOR)"
           else
             BODY="Run failed: https://github.com/$REPO/actions/runs/$RUN_ID (cc @$ACTOR)"
+          fi
+          # Set by parse_issue.py when the issue body could not be read.
+          if [ -n "${PARSE_ERROR:-}" ]; then
+            BODY=$(printf '%s\n\n%s' "$BODY" "$PARSE_ERROR")
           fi
           gh api --method PATCH repos/$REPO/issues/comments/$REPORT_COMMENT_ID \
             -f body="$BODY"

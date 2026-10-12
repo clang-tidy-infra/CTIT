@@ -3,6 +3,7 @@
 
 import argparse
 import argcomplete
+import shlex
 import sys
 
 from testers.analyze import DEFAULT_CLANG_TIDY_BIN, DEFAULT_LOG_DIR, analyze, configure
@@ -75,6 +76,12 @@ def main(argv: list[str] | None = None) -> None:
         "--tidy-config",
         default=None,
         help="Extra clang-tidy configuration string",
+    )
+    analyze_parser.add_argument(
+        "--tidy-args",
+        default="",
+        help="Extra run-clang-tidy flags, quoted like in a shell "
+        "(e.g. '-extra-arg=-std=c++20 -header-filter=.*')",
     )
     analyze_parser.add_argument(
         "--work-dir",
@@ -157,6 +164,7 @@ def main(argv: list[str] | None = None) -> None:
             config_path=args.config,
             skip_headers=args.skip_headers,
             profile=args.enable_check_profile,
+            tidy_args=shlex.split(args.tidy_args),
         )
     elif args.command == "report":
         generate_report(

@@ -245,6 +245,27 @@ class TestRunClangTidy(unittest.TestCase):
         self.assertEqual(args[args.index("-j") + 1], "32")
 
     @patch("testers.analyze.subprocess.Popen")
+    def test_with_tidy_args(self, mock_popen):
+        mock_popen.return_value = self._make_mock_proc([])
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            run_clang_tidy(
+                "/bin/clang-tidy",
+                "/script/run-clang-tidy.py",
+                "/build",
+                "check",
+                "/src/project",
+                "clang/.*$",
+                os.path.join(tmp_dir, "test.log"),
+                os.path.join(tmp_dir, "progress.log"),
+                None,
+                tidy_args=["-extra-arg=-std=c++20", "-header-filter=.*"],
+            )
+
+        args = mock_popen.call_args[0][0]
+        self.assertEqual(args[-3:-1], ["-extra-arg=-std=c++20", "-header-filter=.*"])
+        self.assertIn("^/src/project/clang/.*$", args[-1])
+
+    @patch("testers.analyze.subprocess.Popen")
     def test_with_file_regex(self, mock_popen):
         mock_popen.return_value = self._make_mock_proc([])
         with tempfile.TemporaryDirectory() as tmp_dir:
