@@ -14,6 +14,14 @@ class TestResult(unittest.TestCase):
             with open(os.path.join(logs, "demo.log"), "w") as stream:
                 stream.write(
                     "/work/test_projects/demo/a.cpp:7:3: warning: bad move [check-a]\n"
+                    "===-------------------------------------------------------------------------===\n"
+                    "                          clang-tidy checks profiling\n"
+                    "===-------------------------------------------------------------------------===\n"
+                    "  Total Execution Time: 0.7000 seconds (0.7500 wall clock)\n"
+                    "\n"
+                    "   ---User Time---    --System Time--    --User+System--    ---Wall Time---   --- Name ---\n"
+                    "    0.7000 (100.0%)    0.0000 (  0.0%)    0.7000 (100.0%)    0.7500 (100.0%)  check-a\n"
+                    "    0.7000 (100.0%)    0.0000 (  0.0%)    0.7000 (100.0%)    0.7500 (100.0%)  Total\n"
                     "CTIT analysis elapsed seconds: 1.250000\n"
                 )
             report = os.path.join(tmp_dir, "report.md")
@@ -47,6 +55,10 @@ class TestResult(unittest.TestCase):
             self.assertEqual(saved["github_run_id"], 42)
             self.assertEqual(saved["pr_number"], 123)
             self.assertEqual(saved["project_runs"][0]["duration_seconds"], 1.25)
+            self.assertEqual(
+                saved["project_runs"][0]["check_profile"], {"check-a": 0.75}
+            )
+            self.assertEqual(len(saved["project_runs"][0]["diagnostics"]), 1)
             diagnostic = saved["project_runs"][0]["diagnostics"][0]
             self.assertEqual(diagnostic["message"], "bad move")
             self.assertEqual(diagnostic["verdict"], "TP")
@@ -141,6 +153,7 @@ class TestResult(unittest.TestCase):
 
             self.assertIsNone(result.pr_number)
             self.assertEqual(result.project_runs[0].diagnostics[0].message, "bad move")
+            self.assertIsNone(result.project_runs[0].check_profile)
 
     def test_keeps_report_rows_aligned_when_log_contains_an_error(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
