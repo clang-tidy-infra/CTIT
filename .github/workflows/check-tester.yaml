@@ -253,6 +253,7 @@ jobs:
           --check-name "${{ env.CHECK_NAME }}"
           --clang-tidy-binary llvm-project/build/bin/clang-tidy
           --run-tidy-script logs/run-clang-tidy.py
+          --enable-check-profile
           ${{ env.TIDY_CONFIG && format('--tidy-config "{0}"', env.TIDY_CONFIG) || '' }}
 
       - name: Generate warnings report

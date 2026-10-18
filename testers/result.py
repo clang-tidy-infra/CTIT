@@ -10,6 +10,7 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
+from crash_detection.parse_check_profile import parse_profile
 from testers.generate_report import Issue, ProjectResult, parse_log_file
 
 OUTPUT_FILE = "ctit-result.json"
@@ -29,6 +30,9 @@ class ProjectRun:
     project: str
     status: str
     duration_seconds: float | None
+    # Wall time of each check from clang-tidy's check profile; None if the log
+    # has no profile.
+    check_profile: dict[str, float] | None
     diagnostics: list[Diagnostic]
 
 
@@ -116,7 +120,14 @@ def _project_status(result: ProjectResult) -> str:
     return "COMPLETED"
 
 
-def _project_run(result: ProjectResult, verdicts: Iterator[str | None]) -> ProjectRun:
+def _read_check_profile(log_path: Path) -> dict[str, float] | None:
+    with log_path.open(errors="replace") as log:
+        _, checks = parse_profile(log.readlines())
+    return checks or None
+
+
+def _project_run(log_path: Path, verdicts: Iterator[str | None]) -> ProjectRun:
+    result = parse_log_file(str(log_path))
     diagnostics = []
     for issue in result.issues:
         verdict = next(verdicts, None)
@@ -127,6 +138,7 @@ def _project_run(result: ProjectResult, verdicts: Iterator[str | None]) -> Proje
         project=result.name,
         status=_project_status(result),
         duration_seconds=result.elapsed_seconds,
+        check_profile=_read_check_profile(log_path),
         diagnostics=diagnostics,
     )
 
@@ -135,7 +147,7 @@ def _read_project_runs(log_dir: str, report_path: str | None) -> list[ProjectRun
     log_files = sorted(Path(log_dir).glob("*.log"))
     log_files = [path for path in log_files if path.name != "progress.log"]
     verdicts = _read_verdicts(report_path)
-    return [_project_run(parse_log_file(str(path)), verdicts) for path in log_files]
+    return [_project_run(path, verdicts) for path in log_files]
 
 
 def create_result(
