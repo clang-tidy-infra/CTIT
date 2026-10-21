@@ -12,6 +12,8 @@ jobs:
     runs-on: ubuntu-26.04
     permissions:
       contents: write
+    outputs:
+      sha: ${{ steps.head.outputs.sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -45,6 +47,10 @@ jobs:
           git commit -m "chore: update llvm-project submodule to latest"
           git push
 
+      - name: Record HEAD
+        id: head
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
   determine-runner:
     needs: update-submodule
     runs-on: ubuntu-26.04
@@ -62,7 +68,7 @@ jobs:
           github-token: ${{ secrets.RUNNER_ACCESS_TOKEN }}
 
   warmup:
-    needs: determine-runner
+    needs: [update-submodule, determine-runner]
     runs-on: ${{ fromJson(needs.determine-runner.outputs.runner) }}
     container:
       image: ghcr.io/clang-tidy-infra/ctit-runner:latest # zizmor: ignore[unpinned-images]
@@ -80,6 +86,7 @@ jobs:
       - name: Checkout CTIT
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ needs.update-submodule.outputs.sha }}
           submodules: true
           fetch-depth: 1
           persist-credentials: false
