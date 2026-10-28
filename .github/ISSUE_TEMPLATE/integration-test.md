@@ -9,6 +9,6 @@ assignees: ''
 
 https://github.com/llvm/llvm-project/pull/REPLACE_ME CHECK_NAME
 
-<!-- This service is available to contributors with commit access to `llvm/llvm-project`. -->
+<!-- Runs start only for users with commit access to `llvm/llvm-project`. Without it, ask a clang-tidy maintainer or reviewer to comment `/redo` on this issue. -->
 <!-- Replace the first line with your LLVM PR URL and clang-tidy check name. -->
-<!-- Optional check options go below, one per line, using OPTION_NAME followed by a colon and its value. -->
+<!-- To pass check options, add them below, one per line, as `OPTION_NAME: VALUE`. -->

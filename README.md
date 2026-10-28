@@ -4,19 +4,15 @@ CTIT runs a clang-tidy check against a corpus of real open-source C and C++
 projects and reports every diagnostic it produces. Use it to find false
 positives, crashes, and slowdowns in a check before it lands in LLVM.
 
-There are two ways to use it:
-
-- **As a GitHub service.** Open an issue in this repository with an
-  `llvm/llvm-project` pull request URL and a check name. CTIT applies the patch,
-  builds clang-tidy, runs the check on every test project, and posts the
-  results as a comment on the issue.
-- **As a local CLI.** Install the `ctit` Python package and run the same
-  clone, build, analyze, and report steps on your own machine.
+To use the GitHub service, open an issue in this repository with an
+`llvm/llvm-project` pull request URL and a check name. CTIT applies the patch,
+builds clang-tidy, runs the check on every test project, and posts the results
+as a comment on the issue. You can also install the `ctit` Python package and
+run the same clone, build, analyze, and report steps on your own machine.
 
 - [Test a check from an LLVM pull request](#test-a-check-from-an-llvm-pull-request)
 - [Run CTIT locally](#run-ctit-locally)
 - [Test projects](#test-projects)
-- [Scheduled automation](#scheduled-automation)
 - [Developing CTIT](#developing-ctit)
 
 ## Test a check from an LLVM pull request
@@ -32,8 +28,8 @@ or reviewer to comment `/redo` on it. Their comment starts the run.
 1. [Open a new issue](https://github.com/clang-tidy-infra/CTIT/issues/new/choose) using the **Integration test**
    template.
 2. Replace the issue body with your request (see the format below).
-3. Make sure the issue has the `test-cpp` or `test-c` label. The template adds
-   `test-cpp` automatically. Adding the label is what starts the run.
+3. Make sure the issue has the `test-cpp` or `test-c` label, since the label
+   starts the run. The template adds `test-cpp` for you.
 4. Wait for the results. CTIT posts a "Run started" comment with a link to the
    workflow run, and replaces it with the report when the run finishes.
 
@@ -94,8 +90,9 @@ VariableCase: camelBack
 4. Posts a report listing every diagnostic per project, with links to the
    exact source lines.
 5. Asks an AI agent to label each diagnostic as a true positive, a false
-   positive, or uncertain. This analysis is attached to the report in a
-   collapsed section. Treat it as a starting point, not a verdict.
+   positive, or uncertain, and attaches its analysis to the report in a
+   collapsed section. The labels can be wrong, so check the diagnostics
+   yourself before relying on them.
 
 Full logs, `issue.md`, and `report.md` are uploaded as the `ctit-logs` workflow
 artifact.
@@ -105,8 +102,7 @@ artifact.
 - To run again, for example after pushing new commits to the pull request,
   comment `/redo` on the issue.
 - To stop the nightly watcher from re-testing a pull request, remove the
-  `test-cpp` and `test-c` labels from its issue (see
-  [Scheduled automation](#scheduled-automation)).
+  `test-cpp` and `test-c` labels from its issue.
 
 ### Manual runs from the Actions tab
 
@@ -130,7 +126,7 @@ these inputs:
 - Linux
 - Python 3.10 or newer
 - Git, CMake, and Ninja
-- Clang as the C and C++ compiler.
+- Clang as the C and C++ compiler
 - A `clang-tidy` binary and the `run-clang-tidy` script. You can use a
   packaged clang-tidy, or [build a patched one](#test-a-patched-clang-tidy).
 

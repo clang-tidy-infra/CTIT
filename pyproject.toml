@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ctit"
 dynamic = ["version"]  # From the git tag, see [tool.setuptools_scm]
-description = "Clang Tidy Integration Tester - CI service for testing clang-tidy checks against real-world C/C++ projects"
+description = "Test clang-tidy checks against real-world C and C++ projects"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
