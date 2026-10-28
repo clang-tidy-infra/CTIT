@@ -23,9 +23,8 @@ _REGISTER_RE: re.Pattern[str] = re.compile(
     r"registerCheck\s*<\s*([^>]+?)\s*>\s*\(\s*\"([^\"]+)\"",
     re.DOTALL,
 )
-# This is required because the filename is not always the registered class
-# e.g. HeaderGuardCheck.cpp -> LLVMHeaderGuardCheck
-#      FloatTypesCheck.h    -> RuntimeFloatCheck
+# File names do not always match the registered class, e.g.
+# HeaderGuardCheck.cpp -> LLVMHeaderGuardCheck, FloatTypesCheck.h -> RuntimeFloatCheck.
 _CLASS_DECL_RE: re.Pattern[str] = re.compile(
     r"\b(?:class|struct)\s+"
     r"(?:[A-Za-z_]\w*\s+)*"
@@ -71,7 +70,7 @@ def format_clang_tidy_checks(checks: set[CheckName]) -> str:
 
 
 def format_ci_output(result: SelectionResult) -> str:
-    """Print has_checks, check_name, checks, changed_utils."""
+    """Format the step outputs and append them to $GITHUB_OUTPUT when it is set."""
     check_name: str = ",".join(sorted(result.changed_checks))
     checks: str = format_clang_tidy_checks(result.changed_checks)
     utils: str = ",".join(sorted(result.changed_utils))

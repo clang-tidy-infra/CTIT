@@ -65,8 +65,7 @@ def added_patch_blocks(patch: str) -> list[str]:
 
     Splitting on runs keeps unrelated hunks from being glued together, so a
     ``registerCheck<T>(`` opener can only pair with the string that follows it.
-    Added lines are recognised only inside a hunk, because outside one a
-    leading ``+`` belongs to a ``+++ b/path`` file header rather than to code.
+    Outside a hunk, a leading ``+`` is the ``+++ b/path`` file header.
     """
     blocks: list[str] = []
     current: list[str] = []

@@ -227,7 +227,7 @@ class TestSlimCommentCLI(unittest.TestCase):
         self.assertIn("Error reading", proc.stderr)
 
     def test_warns_when_still_over_limit(self):
-        # No <details> blocks, raw content over limit — can't slim further.
+        # Over the limit with no <details> blocks, so nothing can be trimmed.
         huge = "x" * (GITHUB_COMMENT_LIMIT + 1)
         _, stderr, code = self._run(huge, ARTIFACT_URL)
         self.assertEqual(code, 0)

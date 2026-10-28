@@ -32,7 +32,7 @@ class Note:
 
 @dataclass
 class Issue:
-    """Represents a single static analysis issue."""
+    """One clang-tidy diagnostic."""
 
     file_path: str
     line: int
@@ -58,7 +58,6 @@ class ProjectResult:
 
     @property
     def status_emoji(self) -> str:
-        """Returns a status emoji based on the result."""
         if self.has_crash:
             return "💥"
         if self.errors_count > 0:
@@ -69,7 +68,6 @@ class ProjectResult:
 
     @property
     def status_text(self) -> str:
-        """Returns a human-readable status string."""
         if self.has_crash:
             return "CRASH"
         if self.errors_count > 0:
@@ -80,16 +78,7 @@ class ProjectResult:
 
 
 def get_relative_path(full_path: str, project_name: str) -> str:
-    """
-    Extracts the relative path of a file within the project.
-
-    Args:
-        full_path: The absolute or relative path from the log.
-        project_name: The name of the project.
-
-    Returns:
-        The relative path string.
-    """
+    """Returns the path inside the project, or the file name outside of it."""
     return _project_path(full_path, project_name) or os.path.basename(full_path)
 
 
@@ -107,20 +96,11 @@ def _project_path(full_path: str, project_name: str) -> str | None:
 
 
 def parse_log_file(log_path: str) -> ProjectResult:
-    """
-    Parses a single tool log file to extract analysis results.
-
-    Args:
-        log_path: Path to the log file.
-
-    Returns:
-        A ProjectResult object containing the parsed data.
-    """
+    """Parses one project's clang-tidy log."""
     project_name = os.path.basename(log_path).replace(".log", "")
     result = ProjectResult(name=project_name)
 
-    # Regex to capture standard clang-tidy output format:
-    # Example: /path/to/file.cpp:10:5: warning: message [check-name]
+    # e.g. /path/to/file.cpp:10:5: warning: message [check-name]
     issue_pattern = re.compile(r"^(.+):(\d+):(\d+): (warning|error): (.+) \[(.+)\]$")
     note_pattern = re.compile(r"^(.+):(\d+):\d+: note: (.+)$")
 
@@ -144,7 +124,6 @@ def parse_log_file(log_path: str) -> ProjectResult:
                 result.elapsed_seconds = float(timing.group(1))
                 continue
 
-            # Check for tool crash indicators
             if SEGFAULT_PATTERN.search(line):
                 result.has_crash = True
                 continue
@@ -183,17 +162,16 @@ def parse_log_file(log_path: str) -> ProjectResult:
                     continue
                 seen.add(key)
 
-                # Update counts
                 if severity == "warning":
                     result.warnings_count += 1
                 elif severity == "error":
                     result.errors_count += 1
 
-                # Extract context code (the line following the error message)
+                # clang-tidy prints the source line after the diagnostic.
                 context_code = None
                 if i + 1 < len(lines):
                     next_line = lines[i + 1].strip()
-                    # simplistic check to avoid capturing paths or noise
+                    # A rough filter for paths and other noise.
                     if next_line and not next_line.startswith("/"):
                         context_code = next_line
 
@@ -216,7 +194,7 @@ def parse_log_file(log_path: str) -> ProjectResult:
 
 
 def write_summary_table(f: TextIO, results: list[ProjectResult]) -> None:
-    """Writes the high-level summary table to the markdown file."""
+    """Writes the per-project summary table."""
     f.write("### Clang-Tidy Integration Test Results\n\n")
     f.write("| Project | Status | Warnings | Errors | Crash | Full tidy time (s) |\n")
     f.write("| :--- | :--- | :--- | :--- | :--- | ---: |\n")

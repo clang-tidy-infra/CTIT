@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 """Build the public JSON record for one daily check timings run.
 
-The record keeps the wall time of every clang-tidy check in every test project,
-the same times summed over all projects as in the comment on the tracking
-issue, and how long the analysis of each project took. The results repository
-stores one record per run under ``timings/``, so the timings can be followed
-day by day.
+The record has the wall time of each check per project and summed over all
+projects, as in the tracking issue comment, and the analysis time of each
+project. The results repository stores one record per run under ``timings/``.
 """
 
 from __future__ import annotations

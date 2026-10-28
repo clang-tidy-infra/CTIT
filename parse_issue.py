@@ -18,9 +18,7 @@ def _looks_like_pr_link(token: str) -> bool:
 
 
 def parse_body(body: str) -> ParseResult:
-    """
-    Parses the issue body to extract PR link (optional), check name, and tidy configuration.
-    """
+    """Parse an issue body into the PR link, check name, and clang-tidy config."""
     body = body.strip()
     if not body:
         raise ValueError("Empty body")
@@ -29,7 +27,7 @@ def parse_body(body: str) -> ParseResult:
     if not lines:
         raise ValueError("No valid lines found")
 
-    # Parse [PR_URL] [CHECK_NAME]
+    # Parse first line: [PR_URL] CHECK_NAME
     first_line: str = lines[0]
     parts: list[str] = first_line.split()
     pr_link: str = ""
@@ -41,7 +39,7 @@ def parse_body(body: str) -> ParseResult:
 
     check_name: str = parts[0]
 
-    # Parse options -- simple key and value
+    # Parse options [OPTION_NAME]: [VALUE]
     check_options: dict[str, str] = {}
     for line in lines[1:]:
         if ":" not in line:
@@ -51,7 +49,6 @@ def parse_body(body: str) -> ParseResult:
         key: str = key_raw.strip()
         value: str = value_raw.strip()
 
-        # Handle prefixing and warn if mismatch
         if "." in key:
             prefix, actual_key = key.split(".", 1)
             if prefix != check_name:
@@ -66,7 +63,6 @@ def parse_body(body: str) -> ParseResult:
 
         check_options[full_key] = value
 
-    # Format as clang-tidy config string
     tidy_config: str = ""
     if check_options:
         config_dict: dict[str, Any] = {"CheckOptions": check_options}
@@ -98,7 +94,6 @@ def main() -> None:
         body: str = sys.stdin.read()
         result = parse_body(body)
 
-        # Write to GitHub Env file
         with open(args.output_env_file, "a") as f:
             f.write(f"PR_LINK<<EOF\n{result.pr_link}\nEOF\n")
             f.write(f"CHECK_NAME<<EOF\n{result.check_name}\nEOF\n")
