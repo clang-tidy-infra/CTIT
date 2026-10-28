@@ -52,8 +52,7 @@ ENV CC=clang-21
 ENV CXX=clang++-21
 ENV LLVM_USE_LINKER=mold
 
-# Create a new user with id 1001 as that is the user id that
-# Github Actions uses to perform the checkout action.
+# GitHub Actions checks out code as user ID 1001.
 RUN useradd gha -u 1001 -m -s /bin/bash
 RUN usermod -aG sudo gha
 RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers

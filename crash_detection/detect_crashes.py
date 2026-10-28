@@ -12,8 +12,7 @@ CRASH_PATTERN = re.compile(
 )
 # A killed process can print nothing but this, without any LLVM crash banner.
 SEGFAULT_PATTERN = re.compile(r"Segmentation fault")
-# Matches both stack dump items ("ASTMatcher: Processing '...' against:")
-# and any other "Processing '...' against" lines.
+# The check in stack dump lines such as "ASTMatcher: Processing '<check>' against:".
 _PROCESSING_PATTERN = re.compile(r"(?:Processing|Matching) '([^']+)' against")
 # Stack dump item 1 describes the phase when the crash occurred.
 _STACK_PHASE = re.compile(r"^\s*1\.\s+(.+)$")
@@ -50,9 +49,8 @@ def check_from_context(context: list[str]) -> str:
 def find_crashes_in_lines(lines: list[str]) -> list[Crash]:
     """Return every crash found in *lines*, in the order they occurred.
 
-    Each crash keeps the log lines from its trigger up to MAX_CRASH_LINES,
-    which is what makes the report actionable: the stack dump names the file
-    and the check that blew up.
+    Each crash keeps up to MAX_CRASH_LINES log lines from its trigger, enough
+    for the stack dump to name the file and the crashing check.
     """
     crashes: list[Crash] = []
     i = 0
@@ -119,7 +117,6 @@ def find_crashes(log_dir: str) -> dict[str, _CheckCrashes]:
         for check, occurrences in per_check.items():
             info = crashes.setdefault(check, _CheckCrashes())
             info.count += len(occurrences)
-            # Keep only one example per project to avoid huge memory use.
             seen_projects = {ex.project for ex in info.examples}
             if project not in seen_projects and occurrences:
                 info.examples.append(

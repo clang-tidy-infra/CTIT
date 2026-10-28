@@ -100,7 +100,6 @@ def main() -> None:
         args.profile_file,
     )
 
-    # Save to disk if output file is specified
     if args.output_file:
         try:
             os.makedirs(os.path.dirname(args.output_file), exist_ok=True)

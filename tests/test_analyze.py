@@ -58,7 +58,7 @@ class TestCheckClangCompiler(unittest.TestCase):
     @patch.dict(os.environ, {}, clear=True)
     @patch("testers.analyze.shutil.which")
     def test_passes_when_cc_symlinks_to_clang(self, mock_which):
-        # Simulate cc -> /usr/bin/clang-21 (which resolves contain "clang")
+        # cc resolves to /usr/bin/clang-21, which contains "clang".
         mock_which.side_effect = lambda name: (
             "/usr/bin/clang-21" if name == "cc" else "/usr/bin/clang++-21"
         )

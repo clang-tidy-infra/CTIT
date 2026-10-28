@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
-"""Trims issue.md to fit GitHub's PR comment limit.
+"""Trim issue.md to fit GitHub's comment size limit.
 
-Algorithm:
-  1. Content fits within limit -> return as-is.
-  2. If too long -> strip AI analysis.
-  3. If still too long -> strip per-project findings too.
+A report that is too long loses the AI analysis first, then the per-project
+diagnostics, and links to the workflow artifact instead.
 """
 
 import argparse
@@ -63,13 +61,13 @@ def slim_comment(content: str, artifact_url: str) -> str:
     spans = _find_details_blocks(results)
     ai_spans = [(s, e) for s, e in spans if _AI_MARKER in results[s:e]]
 
-    # Step 2: drop AI analysis, keep per-project findings.
+    # Drop the AI analysis first.
     if ai_spans:
         candidate = kept + _remove_spans(results, ai_spans).rstrip() + artifact_link
         if len(candidate) <= GITHUB_COMMENT_LIMIT:
             return candidate
 
-    # Step 3: drop everything — keep summary table only.
+    # Still too long: keep only what comes before the first <details> block.
     first_details = results.find("<details>")
     summary = (
         results[:first_details].rstrip() if first_details != -1 else results.rstrip()

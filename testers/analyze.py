@@ -14,7 +14,7 @@ from testers.config import CONFIG_FILE, PROJECTS_DIR, Project, load_projects
 DEFAULT_CLANG_TIDY_BIN = "clang-tidy"
 DEFAULT_LOG_DIR = "logs"
 
-# Matches "[  1/165]" lines
+# run-clang-tidy progress lines, e.g. "[  1/165]"; they go to progress.log.
 _PROGRESS_RE = re.compile(r"^\[\s*\d+/\d+\]|^Running clang-tidy in ")
 
 ANALYSIS_CONFIG_FIELDS = {

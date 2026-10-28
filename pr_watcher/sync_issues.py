@@ -288,8 +288,7 @@ def make_issue_probe(
 
 def create_issue(client: GitHubClient, repo: str, target: CheckTarget) -> int:
     """Open the issue, then label it so check-tester.yaml picks it up."""
-    # Only the first line is parsed by parse_issue.py; keep every other line
-    # free of colons so it is never mistaken for a check option.
+    # parse_issue.py reads any later line with a colon as a check option.
     body: str = (
         f"{target.pr_url} {target.check_name}\n\n{format_marker(target.head_sha)}\n"
     )
@@ -336,9 +335,8 @@ def apply_actions(
 ) -> list[Action]:
     """Run every planned action, recording failures instead of aborting.
 
-    One failure must not hide the rest of the night's work: the summary is the
-    only record of what happened, so every action gets its turn and the plan is
-    returned with failures marked.
+    The summary is the only record of the night's work, so one failure must not
+    hide the other actions.
     """
     applied: list[Action] = []
     for action in actions:
