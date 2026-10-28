@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools==84.0.0", "setuptools-scm==10.3.4", "wheel==0.48.0"]
+requires = ["setuptools==84.2.0", "setuptools-scm==10.3.4", "wheel==0.48.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -54,7 +54,7 @@ dev = [
     "shellcheck-py==0.11.0.1",
     "validate-pyproject[all]==0.26",
     "yamllint==1.38.0",
-    "ruff==0.17.0",
+    "ruff==0.17.1",
     "mypy==2.4.0",
     "zizmor==1.30.1",
 ]
