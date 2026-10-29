@@ -11,11 +11,6 @@ echo "Starting build process"
 
 mkdir -p "$BUILD_DIR"
 
-CMAKE_EXTRA_ARGS=()
-if [ -n "${LLVM_USE_LINKER:-}" ]; then
-    CMAKE_EXTRA_ARGS+=("-DLLVM_USE_LINKER=$LLVM_USE_LINKER")
-fi
-
 echo "Configuring CMake"
 CMAKE_EXTRA_ARGS=()
 if [ -n "${LLVM_USE_LINKER:-}" ]; then
