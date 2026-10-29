@@ -316,7 +316,7 @@ class TestParseLogFile(unittest.TestCase):
             )
             path = self._write_log(tmp_dir, "proj", log)
             result = parse_log_file(path)
-            # Same file/line/col/check — first one wins
+            # Same file, line, column, and check: the first one wins.
             self.assertEqual(len(result.issues), 1)
             self.assertEqual(result.issues[0].severity, "warning")
 

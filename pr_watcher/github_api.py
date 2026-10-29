@@ -1,4 +1,4 @@
-"""Minimal GitHub REST client used by the nightly new-check watcher."""
+"""Minimal GitHub REST client for CTIT's workflow scripts."""
 
 from __future__ import annotations
 

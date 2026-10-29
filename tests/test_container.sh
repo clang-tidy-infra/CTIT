@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# Use .sh testing script to run inside Github actions without python dependency.
+# Written in shell so CI can run it without Python dependencies.
 
 IMAGE="${1:-ctit-runner}"
 
