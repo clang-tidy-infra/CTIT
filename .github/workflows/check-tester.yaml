@@ -285,27 +285,30 @@ jobs:
       - name: Analyze false positives with Cursor agent
         if: inputs.skip_ai_analysis != true
         continue-on-error: true
-        timeout-minutes: 45
+        # Reading every warning of a large run takes long. Each agent pass has
+        # its own limit below, so the final report check still runs.
+        timeout-minutes: 120
         env:
           CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
         shell: bash
         run: |
           ./ctit.py report-template
-          agent --trust -p "report.md is a pre-filled table with one row per \
+          timeout 85m agent --trust -p "report.md is a pre-filled table with one row per \
           clang-tidy warning. Edit it in place: replace the TBD cells in the \
           Verdict and Rationale columns and update the Summary line. Do not \
           touch columns 1-2 and 5 and do not add or remove rows. Read the \
-          source of every row before giving its verdict, and write the minimal \
+          source of every row before giving its verdict, save verdicts to \
+          report.md after every batch of at most 20 rows, and write the minimal \
           reproducers described in AGENTS.md. Follow AGENTS.md. Before you \
           finish, run ./ctit.py report-check and redo every row it lists." \
-          --model cursor-grok-4.6-high
+          --model cursor-grok-4.6-high || echo "First agent pass exited with $?"
           # Give the agent one more pass at the rows it still skipped.
           if ! ./ctit.py report-check > logs/report-check.txt; then
-            agent --trust --continue -p "logs/report-check.txt lists the rows \
+            timeout 25m agent --trust --continue -p "logs/report-check.txt lists the rows \
           of report.md whose verdict is missing or whose rationale cites nothing \
           from their own source. Read the source of each listed row and redo \
           it, then update the Summary line and rerun ./ctit.py report-check." \
-            --model cursor-grok-4.6-high
+            --model cursor-grok-4.6-high || echo "Second agent pass exited with $?"
             ./ctit.py report-check > logs/report-check.txt || true
           fi
           head -1 logs/report-check.txt

@@ -64,7 +64,12 @@ separate verdicts. A warning also appearing in the baseline is not necessarily
 a true positive: an unchanged warning still needs its own source-based verdict,
 and "the baseline reports it too" is never a rationale.
 
-Process rows top-to-bottom. For each row:
+Process rows top-to-bottom and save as you go: after every batch of at most
+20 rows, write their verdicts and rationales into `report.md` before reading
+the next rows. Never hold all verdicts and write them at the end; the run can
+stop at any time, and only rows already written to `report.md` count. If
+`report.md` already has filled rows when you start, keep them and continue
+from the first `TBD` row. For each row:
 
 1. **Read the warning** - the `Location` column links to the exact file:line in
    the project's source.
