@@ -2,16 +2,18 @@
 
 from __future__ import annotations
 
+import itertools
 import json
 import os
 import re
 from collections.abc import Iterator
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
 from crash_detection.parse_check_profile import parse_profile
 from testers.generate_report import Issue, ProjectResult, parse_log_file
+from testers.reproduce import REPRODUCERS_JSON
 
 OUTPUT_FILE = "ctit-result.json"
 
@@ -23,6 +25,9 @@ class Diagnostic:
     column: int
     message: str
     verdict: str | None
+    # Index into Run.reproducers of the AI triage's minimal reproducer of
+    # this warning, or None. Warnings with a common cause share one.
+    reproducer: int | None = None
 
 
 @dataclass
@@ -58,6 +63,9 @@ class Run:
     artifact_url: str | None
     project_runs: list[ProjectRun]
     baseline: Baseline | None = None
+    # Minimal reproducers from the AI triage, with the clang-tidy outputs; see
+    # testers/reproduce.py.
+    reproducers: list[dict[str, object]] = field(default_factory=list)
 
 
 def _parse_timestamp(value: str, name: str) -> datetime:
@@ -102,13 +110,33 @@ def _read_verdicts(report_path: str | None) -> Iterator[str | None]:
     return iter(verdicts)
 
 
-def _diagnostic(issue: Issue, verdict: str | None) -> Diagnostic:
+def _read_reproducers(
+    path: str | None,
+) -> tuple[list[dict[str, object]], dict[int, int]]:
+    """Returns the reproducers and maps report.md rows to their indexes."""
+    if not path or not os.path.isfile(path):
+        return [], {}
+    with open(path) as stream:
+        items = json.load(stream)
+    reproducers = []
+    rows = {}
+    for index, item in enumerate(items):
+        for warning in item.pop("warnings"):
+            rows[warning["row"]] = index
+        reproducers.append(item)
+    return reproducers, rows
+
+
+def _diagnostic(
+    issue: Issue, verdict: str | None, reproducer: int | None
+) -> Diagnostic:
     return Diagnostic(
         file=issue.file_path,
         line=issue.line,
         column=issue.col,
         message=issue.message,
         verdict=verdict,
+        reproducer=reproducer,
     )
 
 
@@ -126,13 +154,19 @@ def _read_check_profile(log_path: Path) -> dict[str, float] | None:
     return checks or None
 
 
-def _project_run(log_path: Path, verdicts: Iterator[str | None]) -> ProjectRun:
+def _project_run(
+    log_path: Path,
+    verdicts: Iterator[str | None],
+    rows: Iterator[int],
+    reproducers: dict[int, int],
+) -> ProjectRun:
     result = parse_log_file(str(log_path))
     diagnostics = []
     for issue in result.issues:
         verdict = next(verdicts, None)
+        row = next(rows)
         if issue.severity == "warning":
-            diagnostics.append(_diagnostic(issue, verdict))
+            diagnostics.append(_diagnostic(issue, verdict, reproducers.get(row)))
 
     return ProjectRun(
         project=result.name,
@@ -143,11 +177,15 @@ def _project_run(log_path: Path, verdicts: Iterator[str | None]) -> ProjectRun:
     )
 
 
-def _read_project_runs(log_dir: str, report_path: str | None) -> list[ProjectRun]:
+def _read_project_runs(
+    log_dir: str, report_path: str | None, reproducers: dict[int, int] | None = None
+) -> list[ProjectRun]:
     log_files = sorted(Path(log_dir).glob("*.log"))
     log_files = [path for path in log_files if path.name != "progress.log"]
     verdicts = _read_verdicts(report_path)
-    return [_project_run(path, verdicts) for path in log_files]
+    # report.md numbers the diagnostics from 1 in this order.
+    rows = itertools.count(1)
+    return [_project_run(path, verdicts, rows, reproducers or {}) for path in log_files]
 
 
 def create_result(
@@ -168,6 +206,7 @@ def create_result(
     artifact_url: str | None,
     baseline_revision: str | None = None,
     baseline_log_dir: str | None = None,
+    reproducers_path: str | None = None,
 ) -> Run:
     """Collect the metadata, project results, warnings, and TP/FP verdicts."""
     if status not in {"COMPLETED", "FAILED", "CANCELLED"}:
@@ -189,6 +228,7 @@ def create_result(
             project_runs=baseline_runs,
         )
 
+    reproducers, reproducer_rows = _read_reproducers(reproducers_path)
     return Run(
         github_run_id=int(github_run_id),
         github_run_attempt=github_run_attempt,
@@ -202,8 +242,9 @@ def create_result(
         duration_seconds=duration_seconds,
         status=status,
         artifact_url=artifact_url,
-        project_runs=_read_project_runs(log_dir, report_path),
+        project_runs=_read_project_runs(log_dir, report_path, reproducer_rows),
         baseline=baseline,
+        reproducers=reproducers,
     )
 
 
@@ -272,6 +313,7 @@ def main() -> None:
             _required_environment("LLVM_REVISION") if compare_baseline else None
         ),
         baseline_log_dir="logs/baseline" if has_baseline else None,
+        reproducers_path=REPRODUCERS_JSON,
     )
     write_result(result, OUTPUT_FILE)
     print(f"Run result generated: {OUTPUT_FILE}")

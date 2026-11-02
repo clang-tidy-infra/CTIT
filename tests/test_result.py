@@ -168,6 +168,22 @@ class TestResult(unittest.TestCase):
                     "| 1 | demo | FP | Error row. | a.cpp:1 |\n"
                     "| 2 | demo | TP | Warning row. | a.cpp:2 |\n"
                 )
+            reproducers = os.path.join(tmp_dir, "reproducers.json")
+            with open(reproducers, "w") as stream:
+                json.dump(
+                    [
+                        {
+                            "warnings": [{"row": 2}],
+                            "language": "cpp",
+                            "source": "int x;\n",
+                            "compiler_args": ["-std=c++20"],
+                            "patched_output": "warns",
+                            "baseline_status": "unavailable",
+                            "baseline_output": None,
+                        }
+                    ],
+                    stream,
+                )
 
             result = create_result(
                 log_dir=tmp_dir,
@@ -184,11 +200,16 @@ class TestResult(unittest.TestCase):
                 duration_seconds=60.0,
                 status="COMPLETED",
                 artifact_url=None,
+                reproducers_path=reproducers,
             )
 
             diagnostics = result.project_runs[0].diagnostics
             self.assertEqual(len(diagnostics), 1)
             self.assertEqual(diagnostics[0].verdict, "TP")
+            # Row 2 is the warning, after the error that is row 1.
+            repro = result.reproducers[diagnostics[0].reproducer]
+            self.assertEqual(repro["patched_output"], "warns")
+            self.assertEqual(repro["baseline_status"], "unavailable")
 
 
 if __name__ == "__main__":

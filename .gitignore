@@ -36,3 +36,7 @@ share/python-wheels/
 # AI cli's They are just editors now..
 .claude/settings.json
 .claude/settings.local.json
+reproducers/
+reproducers.json
+reproducers.md
+baseline-tidy/

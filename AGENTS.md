@@ -85,6 +85,40 @@ Process rows top-to-bottom. For each row:
    to a previously analyzed row (same check, same code pattern, same verdict),
    you may write `Same as #N` instead of repeating the full rationale.
 
+## Minimal Reproducers
+
+For each row you mark **FP** or **Uncertain**, and any TP whose behavior the
+patch changes, try to write a minimal, self-contained reproducer: a single
+`.cpp` (or `.c`) file, without project headers, that triggers the same warning.
+Write at most 10 reproducer files, starting with the rows that most affect
+your verdicts. Skip a row if you cannot reproduce it after a few attempts.
+
+1. Write the file in `/tmp/repro/<row>.cpp`, where `<row>` is the `#` of the row.
+   The default compiler arguments are `-std=c++20` (`-std=c17` for `.c`); to
+   change them, start the file with a `// ctit-args: <arguments>` line.
+   When several rows share one cause, write one reproducer for all of them:
+   name it after the first row and list the others in a leading
+   `// ctit-rows: 7 12-15` line. Only group rows whose project code has the
+   same pattern, not merely the same message.
+2. Try it with the same check, options, and binaries as the run:
+
+   ```bash
+   ./ctit.py repro /tmp/repro/<row>.cpp --check-name "$CHECK_NAME" \
+     --tidy-config "$TIDY_CONFIG" --clang-tidy-binary llvm-project/build/bin/clang-tidy \
+     ${BASELINE_TIDY:+--baseline-clang-tidy-binary "$BASELINE_TIDY"}
+   ```
+
+   It prints the patched output, and the baseline output when the run has a
+   baseline. It rejects a reproducer unless the patched clang-tidy reports a
+   warning from the check of every row it claims, with no compiler errors.
+3. Once it reproduces, copy it to `reproducers/<row>.cpp`. CTIT reruns every
+   file there after you finish and publishes the real outputs, so never write
+   tool output yourself.
+
+Use the patched/baseline difference as evidence in the rationale, e.g. "the
+reproducer warns only with the patch". A reproducer shows the check's behavior
+on a reduced case; it does not by itself prove TP or FP.
+
 When all rows are filled, replace the three `TBD` counts in the
 `**Summary**: TBD True Positives, TBD False Positives, TBD Uncertain ...` line.
 

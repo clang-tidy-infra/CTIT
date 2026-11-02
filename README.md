@@ -92,7 +92,9 @@ VariableCase: camelBack
 5. Asks an AI agent to label each diagnostic as a true positive, a false
    positive, or uncertain, and attaches its analysis to the report in a
    collapsed section. The labels can be wrong, so check the diagnostics
-   yourself before relying on them.
+   yourself before relying on them. For some diagnostics the agent also
+   writes a minimal reproducer; CTIT runs it with the patched clang-tidy and,
+   with `/baseline`, the unpatched one, and shows both outputs.
 
 Full logs, `issue.md`, and `report.md` are uploaded as the `ctit-logs` workflow
 artifact.

@@ -13,6 +13,7 @@ from testers.generate_report import (
     generate_report,
     generate_template,
 )
+from testers.reproduce import DEFAULT_REPRO_DIR, reproduce
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -136,6 +137,36 @@ def main(argv: list[str] | None = None) -> None:
         help="Output template file (default: report.md)",
     )
 
+    repro_parser = subparsers.add_parser(
+        "repro",
+        help="Run the AI's minimal reproducers with the patched and baseline clang-tidy",
+    )
+    repro_parser.add_argument(
+        "sources",
+        nargs="*",
+        help="Reproducers to try and print, named <row>.cpp or <row>.c after "
+        "their report.md row (default: collect every file in --repro-dir)",
+    )
+    repro_parser.add_argument("--check-name", required=True)
+    repro_parser.add_argument("--tidy-config", default=None)
+    repro_parser.add_argument(
+        "--clang-tidy-binary",
+        default=DEFAULT_CLANG_TIDY_BIN,
+        help=f"Patched clang-tidy binary (default: {DEFAULT_CLANG_TIDY_BIN})",
+    )
+    repro_parser.add_argument(
+        "--baseline-clang-tidy-binary",
+        default=None,
+        help="Unpatched clang-tidy binary; omit when the run has no baseline",
+    )
+    repro_parser.add_argument(
+        "--baseline-unavailable",
+        action="store_true",
+        help="The check does not exist in the baseline",
+    )
+    repro_parser.add_argument("--repro-dir", default=DEFAULT_REPRO_DIR)
+    repro_parser.add_argument("--log-dir", default=DEFAULT_LOG_DIR)
+
     argcomplete.autocomplete(parser)
     args = parser.parse_args(argv)
 
@@ -167,6 +198,17 @@ def main(argv: list[str] | None = None) -> None:
         )
     elif args.command == "report-template":
         generate_template(log_dir=args.log_dir, output=args.output)
+    elif args.command == "repro":
+        reproduce(
+            sources=args.sources,
+            repro_dir=args.repro_dir,
+            log_dir=args.log_dir,
+            check_name=args.check_name,
+            tidy_config=args.tidy_config,
+            clang_tidy_bin=args.clang_tidy_binary,
+            baseline_bin=args.baseline_clang_tidy_binary,
+            baseline_unavailable=args.baseline_unavailable,
+        )
 
 
 if __name__ == "__main__":

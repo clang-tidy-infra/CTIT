@@ -223,6 +223,15 @@ jobs:
             echo "HAS_BASELINE=true" >> "$GITHUB_ENV"
           fi
 
+      - name: Keep baseline clang-tidy for reproducers
+        if: env.HAS_BASELINE == 'true'
+        run: |
+          # clang-tidy finds its builtin headers in ../lib/clang next to bin/.
+          mkdir -p baseline-tidy/bin baseline-tidy/lib
+          cp llvm-project/build/bin/clang-tidy baseline-tidy/bin/
+          cp -r llvm-project/build/lib/clang baseline-tidy/lib/
+          echo "BASELINE_TIDY=$GITHUB_WORKSPACE/baseline-tidy/bin/clang-tidy" >> "$GITHUB_ENV"
+
       - name: Resolve analyzed PR revision
         if: github.event_name != 'workflow_dispatch'
         env:
@@ -284,8 +293,23 @@ jobs:
           agent --trust -p "report.md is a pre-filled table with one row per \
           clang-tidy warning. Edit it in place: replace the TBD cells in the \
           Verdict and Rationale columns and update the Summary line. Do not \
-          touch columns 1-2 and 5 and do not add or remove rows. Follow AGENTS.md." \
+          touch columns 1-2 and 5 and do not add or remove rows. Also write the \
+          minimal reproducers described in AGENTS.md. Follow AGENTS.md." \
           --model cursor-grok-4.6-high
+
+      - name: Run AI reproducers
+        if: inputs.skip_ai_analysis != true
+        continue-on-error: true
+        shell: bash
+        run: |
+          args=()
+          if [ -n "${BASELINE_TIDY:-}" ]; then
+            args+=(--baseline-clang-tidy-binary "$BASELINE_TIDY")
+          elif [ "$COMPARE_BASELINE" = true ]; then
+            args+=(--baseline-unavailable)
+          fi
+          ./ctit.py repro --check-name "$CHECK_NAME" --tidy-config "$TIDY_CONFIG" \
+            --clang-tidy-binary llvm-project/build/bin/clang-tidy "${args[@]}"
 
       - name: Upload logs and reports
         if: always()
@@ -297,6 +321,8 @@ jobs:
             logs/
             issue.md
             report.md
+            reproducers/
+            reproducers.json
 
       - name: Generate public run result
         if: always()
@@ -344,6 +370,10 @@ jobs:
             {
               printf '\n<details>\n<summary><b>AI False-Positive Analysis</b> (click to expand)</summary>\n\n'
               cat report.md
+              if [ -f reproducers.md ]; then
+                printf '\n'
+                cat reproducers.md
+              fi
               printf '\n</details>\n'
             } >> issue.md
           fi
