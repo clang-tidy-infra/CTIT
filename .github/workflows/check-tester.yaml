@@ -293,8 +293,9 @@ jobs:
           agent --trust -p "report.md is a pre-filled table with one row per \
           clang-tidy warning. Edit it in place: replace the TBD cells in the \
           Verdict and Rationale columns and update the Summary line. Do not \
-          touch columns 1-2 and 5 and do not add or remove rows. Also write the \
-          minimal reproducers described in AGENTS.md. Follow AGENTS.md." \
+          touch columns 1-2 and 5 and do not add or remove rows. Read the \
+          source of every row before giving its verdict, and write the minimal \
+          reproducers described in AGENTS.md. Follow AGENTS.md." \
           --model cursor-grok-4.6-high
 
       - name: Run AI reproducers

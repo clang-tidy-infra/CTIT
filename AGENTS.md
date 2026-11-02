@@ -61,14 +61,17 @@ the `**Summary**` line counts at the bottom.
 If `issue.md` includes baseline results, analyze only the PR diagnostics listed
 in `report.md`. Baseline diagnostics are reference data and do not require
 separate verdicts. A warning also appearing in the baseline is not necessarily
-a true positive.
+a true positive: an unchanged warning still needs its own source-based verdict,
+and "the baseline reports it too" is never a rationale.
 
 Process rows top-to-bottom. For each row:
 
 1. **Read the warning** - the `Location` column links to the exact file:line in
    the project's source.
 2. **Read the source code** - open the linked file and read ±30 lines around
-   the flagged line to understand intent and surrounding context.
+   the flagged line to understand intent and surrounding context. Do this for
+   every row, including rows you expect to share a pattern with an earlier one;
+   comments near the flagged line often say why the code must stay as it is.
 3. **Read the check documentation** - understand what the check is designed to
    detect and any documented limitations.
 4. **Read the check implementation** (when the doc alone is insufficient) —
@@ -81,17 +84,33 @@ Process rows top-to-bottom. For each row:
      platform-specific code, intentional patterns).
    - **Uncertain** - you lack enough context to decide confidently.
 6. **Write a rationale** by replacing the `TBD` in the `Rationale` column with
-   1–3 sentences explaining your reasoning. If a row is **substantially identical**
-   to a previously analyzed row (same check, same code pattern, same verdict),
-   you may write `Same as #N` instead of repeating the full rationale.
+   1–3 sentences explaining your reasoning, grounded in this row's source. If
+   you read this row's source and it has the same code pattern as an earlier
+   row with the same verdict, you may write `Same as #N: <pattern>`, naming the
+   shared pattern in a few words (e.g. `Same as #12: index loop, read-only
+   body`). Never use `Same as #N` because only the check or the message
+   matches.
 
 ## Minimal Reproducers
 
-For each row you mark **FP** or **Uncertain**, and any TP whose behavior the
-patch changes, try to write a minimal, self-contained reproducer: a single
-`.cpp` (or `.c`) file, without project headers, that triggers the same warning.
+Reproducers test the check on the code patterns behind your verdicts. Which
+rows need one does not depend on the verdict you expect; deciding that a row
+is TP is not a reason to skip it. Write a minimal, self-contained reproducer
+(a single `.cpp` or `.c` file, without project headers, that triggers the same
+warning) for:
+
+- every pattern you mark **FP** or **Uncertain**;
+- every pattern whose correctness depends on something outside the flagged
+  line: the loop body or callees changing the data the check reasons about,
+  macros, templates, aliasing, lifetimes, or a nearby comment explaining why
+  the code is written that way;
+- with a baseline, every pattern whose warning the patch adds, removes, or
+  changes, and a few common unchanged patterns, so the patched and baseline
+  outputs can be compared.
+
 Write at most 10 reproducer files, starting with the rows that most affect
-your verdicts. Skip a row if you cannot reproduce it after a few attempts.
+your verdicts, and group rows that share a pattern (see below). Skip a row if
+you cannot reproduce it after a few attempts.
 
 1. Write the file in `/tmp/repro/<row>.cpp`, where `<row>` is the `#` of the row.
    The default compiler arguments are `-std=c++20` (`-std=c17` for `.c`); to
