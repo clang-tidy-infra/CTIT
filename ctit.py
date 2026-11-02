@@ -6,6 +6,7 @@ import argcomplete
 import sys
 
 from testers.analyze import DEFAULT_CLANG_TIDY_BIN, DEFAULT_LOG_DIR, analyze, configure
+from testers.check_report import check_report
 from testers.clone_projects import clone_projects
 from testers.config import CONFIG_FILE, PROJECTS_DIR
 from testers.generate_report import (
@@ -137,6 +138,18 @@ def main(argv: list[str] | None = None) -> None:
         help="Output template file (default: report.md)",
     )
 
+    report_check_parser = subparsers.add_parser(
+        "report-check",
+        help="List the report.md rows without a verdict or a source-based rationale",
+    )
+    report_check_parser.add_argument("--log-dir", default=DEFAULT_LOG_DIR)
+    report_check_parser.add_argument("--report", default="report.md")
+    report_check_parser.add_argument(
+        "--work-dir",
+        default=PROJECTS_DIR,
+        help=f"Directory containing cloned projects (default: {PROJECTS_DIR})",
+    )
+
     repro_parser = subparsers.add_parser(
         "repro",
         help="Run the AI's minimal reproducers with the patched and baseline clang-tidy",
@@ -198,6 +211,8 @@ def main(argv: list[str] | None = None) -> None:
         )
     elif args.command == "report-template":
         generate_template(log_dir=args.log_dir, output=args.output)
+    elif args.command == "report-check":
+        check_report(log_dir=args.log_dir, report=args.report, work_dir=args.work_dir)
     elif args.command == "repro":
         reproduce(
             sources=args.sources,

@@ -141,6 +141,12 @@ on a reduced case; it does not by itself prove TP or FP.
 When all rows are filled, replace the three `TBD` counts in the
 `**Summary**: TBD True Positives, TBD False Positives, TBD Uncertain ...` line.
 
+Then run `./ctit.py report-check`. It lists every row without a verdict or
+whose rationale cites nothing from its flagged source lines (a variable,
+container, type, or function there). Read the source of each listed row and
+redo it, until the check passes. Do not satisfy it by pasting names without
+reading the code; CTIT reports rows that still fail.
+
 ## LifetimeSafety Verdicts
 
 CTIT enables `-Wlifetime-safety-all`, which includes safety warnings, annotation
