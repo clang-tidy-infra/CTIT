@@ -8,6 +8,7 @@ RUN apt-get update && \
     curl \
     ninja-build \
     build-essential \
+    libstdc++-13-dev \
     mold \
     python3 \
     python3-dev \
@@ -45,12 +46,17 @@ RUN apt-get update && \
 RUN curl -fSL --retry 3 https://apt.llvm.org/llvm.sh -o /tmp/llvm.sh && \
     bash /tmp/llvm.sh 21 && \
     rm /tmp/llvm.sh && \
+    apt-get install -y libc++-21-dev libc++abi-21-dev && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
 ENV CC=clang-21
 ENV CXX=clang++-21
 ENV LLVM_USE_LINKER=mold
+
+COPY toolchains/ /opt/ctit/toolchains/
+RUN sed -i "s/@TRIPLE@/$(gcc -dumpmachine)/g" /opt/ctit/toolchains/*.json
+ENV CTIT_TOOLCHAIN_DIR=/opt/ctit/toolchains
 
 # Create a new user with id 1001 as that is the user id that
 # Github Actions uses to perform the checkout action.

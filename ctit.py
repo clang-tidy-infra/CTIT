@@ -3,6 +3,7 @@
 
 import argparse
 import argcomplete
+import os
 import sys
 
 from testers.analyze import DEFAULT_CLANG_TIDY_BIN, DEFAULT_LOG_DIR, analyze, configure
@@ -13,6 +14,23 @@ from testers.generate_report import (
     generate_report,
     generate_template,
 )
+from testers.toolchain import Toolchain, load_toolchain
+
+TOOLCHAIN_HELP = (
+    "Toolchain profile JSON selecting an installed Clang and C++ standard "
+    "library (default: the CC/CXX compilers and their default library)"
+)
+
+
+def _load_toolchain(path: str | None) -> Toolchain | None:
+    if path is None:
+        return None
+    try:
+        return load_toolchain(path)
+    except (OSError, ValueError) as e:
+        # json.JSONDecodeError is a ValueError.
+        print(f"Error: invalid toolchain profile: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -51,6 +69,7 @@ def main(argv: list[str] | None = None) -> None:
         default=CONFIG_FILE,
         help="Path to config file (default: bundled projects.json)",
     )
+    configure_parser.add_argument("--toolchain", help=TOOLCHAIN_HELP)
 
     analyze_parser = subparsers.add_parser(
         "analyze",
@@ -83,8 +102,10 @@ def main(argv: list[str] | None = None) -> None:
     )
     analyze_parser.add_argument(
         "--log-dir",
-        default=DEFAULT_LOG_DIR,
-        help=f"Directory for analysis logs (default: {DEFAULT_LOG_DIR})",
+        help=(
+            f"Directory for analysis logs (default: {DEFAULT_LOG_DIR}, "
+            f"or {DEFAULT_LOG_DIR}/<profile key> with --toolchain)"
+        ),
     )
     analyze_parser.add_argument(
         "--config",
@@ -102,6 +123,7 @@ def main(argv: list[str] | None = None) -> None:
         default=False,
         help="Enable per-check timing profiles (appended to logs)",
     )
+    analyze_parser.add_argument("--toolchain", help=TOOLCHAIN_HELP)
 
     report_parser = subparsers.add_parser(
         "report",
@@ -145,18 +167,29 @@ def main(argv: list[str] | None = None) -> None:
     elif args.command == "clone":
         clone_projects(work_dir=args.work_dir, config_path=args.config)
     elif args.command == "configure":
-        configure(work_dir=args.work_dir, config_path=args.config)
+        configure(
+            work_dir=args.work_dir,
+            config_path=args.config,
+            toolchain=_load_toolchain(args.toolchain),
+        )
     elif args.command == "analyze":
+        toolchain = _load_toolchain(args.toolchain)
+        log_dir = args.log_dir
+        if log_dir is None:
+            log_dir = DEFAULT_LOG_DIR
+            if toolchain is not None:
+                log_dir = os.path.join(DEFAULT_LOG_DIR, toolchain.key)
         analyze(
             check_name=args.check_name,
             tidy_config=args.tidy_config,
             clang_tidy_bin=args.clang_tidy_binary,
             run_tidy_script=args.run_tidy_script,
             work_dir=args.work_dir,
-            log_dir=args.log_dir,
+            log_dir=log_dir,
             config_path=args.config,
             skip_headers=args.skip_headers,
             profile=args.enable_check_profile,
+            toolchain=toolchain,
         )
     elif args.command == "report":
         generate_report(

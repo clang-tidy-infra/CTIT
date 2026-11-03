@@ -12,6 +12,7 @@ run the same clone, build, analyze, and report steps on your own machine.
 
 - [Test a check from an LLVM pull request](#test-a-check-from-an-llvm-pull-request)
 - [Run CTIT locally](docs/local-usage.md)
+- [Toolchain profiles](docs/toolchain-profiles.md)
 - [Test projects](docs/test-projects.md)
 - [Contributing to CTIT](CONTRIBUTING.md)
 
@@ -40,6 +41,7 @@ or reviewer to comment `/redo` on it. Their comment starts the run.
 [OPTION_NAME: VALUE]
 [OPTION_NAME: VALUE]
 [/baseline]
+[/profile PROFILE_NAME]
 ```
 
 | Part                 | Required | Description                                                                                                                                         |
@@ -48,6 +50,7 @@ or reviewer to comment `/redo` on it. Their comment starts the run.
 | `CHECK_NAME`         | Yes      | The clang-tidy check to run, for example `bugprone-argument-comment`. Glob patterns such as `bugprone-*` also work.                                 |
 | `OPTION_NAME: VALUE` | No       | Check options, one per line. CTIT adds the `CHECK_NAME.` prefix for you, so write `VariableCase`, not `readability-identifier-naming.VariableCase`. |
 | `/baseline`          | No       | Also run the check on unpatched LLVM `main` and list the diagnostics the PR adds or removes. Only works with a `PR_URL`.                            |
+| `/profile`           | No       | Build the test projects with another C++ standard library: `libstdcxx-15` (the default), `libstdcxx-13`, or `libcxx-21`.                            |
 
 ### Examples
 
@@ -70,6 +73,13 @@ Compare a pull request against the current behavior of the check on `main`:
 ```text
 https://github.com/llvm/llvm-project/pull/123456 readability-identifier-naming
 /baseline
+```
+
+Test a pull request against libc++ instead of the default libstdc++:
+
+```text
+https://github.com/llvm/llvm-project/pull/123456 bugprone-use-after-move
+/profile libcxx-21
 ```
 
 Test a check that already exists upstream, with no patch:
@@ -117,6 +127,7 @@ these inputs:
 | `check_name`       | The check to run.                                        |
 | `extra_config`     | One check option, for example `VariableCase: camelBack`. |
 | `compare_baseline` | Also run unpatched LLVM, like `/baseline`.               |
+| `profile`          | Toolchain profile name, like `/profile`.                 |
 | `skip_ai_analysis` | Skip the AI false-positive analysis step.                |
 
 ## Acknowledgements

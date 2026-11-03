@@ -1,0 +1,8 @@
+{
+  "name": "libcxx-21",
+  "stdlib": "libc++",
+  "cc": "/usr/bin/clang-21",
+  "cxx": "/usr/bin/clang++-21",
+  "include_dir": "/usr/lib/llvm-21/include/c++/v1",
+  "library_dir": "/usr/lib/llvm-21/lib"
+}

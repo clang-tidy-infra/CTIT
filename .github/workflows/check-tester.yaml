@@ -20,6 +20,9 @@ on:
         description: 'Compare against the unpatched LLVM submodule'
         type: boolean
         default: false
+      profile:
+        description: 'Toolchain profile bundled in the runner image (e.g. libcxx-21); leave empty for the default toolchain'
+        required: false
   issues:
     types: labeled
   issue_comment:
@@ -174,6 +177,8 @@ jobs:
         run: ./ctit.py clone --work-dir test_projects
 
       - name: Extract analysis inputs from issue body
+        env:
+          INPUT_PROFILE: ${{ inputs.profile }}
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             {
@@ -181,6 +186,9 @@ jobs:
               echo "${{ github.event.inputs.extra_config }}"
               if [ "${{ inputs.compare_baseline }}" = true ]; then
                 echo /baseline
+              fi
+              if [ -n "$INPUT_PROFILE" ]; then
+                echo "/profile $INPUT_PROFILE"
               fi
             } | python3 parse_issue.py $GITHUB_ENV
           else
@@ -190,6 +198,18 @@ jobs:
           echo "PR_LINK: $PR_LINK"
           echo "CHECK_NAME: $CHECK_NAME"
           echo "TIDY_CONFIG: $TIDY_CONFIG"
+
+      - name: Select toolchain profile
+        if: env.PROFILE != ''
+        run: |
+          TOOLCHAIN_FILE="$CTIT_TOOLCHAIN_DIR/$PROFILE.json"
+          if [ ! -f "$TOOLCHAIN_FILE" ]; then
+            available=$(cd "$CTIT_TOOLCHAIN_DIR" && ls -- *.json | sed 's/\.json$//' | paste -sd, -)
+            echo "::error::Unknown toolchain profile '$PROFILE'. Available profiles: $available"
+            exit 1
+          fi
+          cat "$TOOLCHAIN_FILE"
+          echo "TOOLCHAIN_FILE=$TOOLCHAIN_FILE" >> "$GITHUB_ENV"
 
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
@@ -203,7 +223,7 @@ jobs:
         run: bash build.sh
 
       - name: Configure test projects
-        run: ./ctit.py configure
+        run: ./ctit.py configure ${TOOLCHAIN_FILE:+--toolchain "$TOOLCHAIN_FILE"}
 
       - name: Save analysis runner
         run: |
@@ -219,7 +239,8 @@ jobs:
             ./ctit.py analyze --check-name "$CHECK_NAME" \
               --clang-tidy-binary llvm-project/build/bin/clang-tidy \
               --run-tidy-script logs/run-clang-tidy.py \
-              --log-dir logs/baseline --tidy-config "$TIDY_CONFIG"
+              --log-dir logs/baseline --tidy-config "$TIDY_CONFIG" \
+              ${TOOLCHAIN_FILE:+--toolchain "$TOOLCHAIN_FILE"}
             echo "HAS_BASELINE=true" >> "$GITHUB_ENV"
           fi
 
@@ -253,7 +274,9 @@ jobs:
           --check-name "${{ env.CHECK_NAME }}"
           --clang-tidy-binary llvm-project/build/bin/clang-tidy
           --run-tidy-script logs/run-clang-tidy.py
+          --log-dir logs
           --enable-check-profile
+          ${TOOLCHAIN_FILE:+--toolchain "$TOOLCHAIN_FILE"}
           ${{ env.TIDY_CONFIG && format('--tidy-config "{0}"', env.TIDY_CONFIG) || '' }}
 
       - name: Generate warnings report
