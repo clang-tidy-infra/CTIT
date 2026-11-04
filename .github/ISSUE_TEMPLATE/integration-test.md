@@ -12,3 +12,4 @@ https://github.com/llvm/llvm-project/pull/REPLACE_ME CHECK_NAME
 <!-- Runs start only for users with commit access to `llvm/llvm-project`. Without it, ask a clang-tidy maintainer or reviewer to run analysis -->
 <!-- Replace the first line with your LLVM PR URL and clang-tidy check name. -->
 <!-- To pass check options, add them below, one per line, e.g `OPTION_NAME: VALUE`. -->
+<!-- To build the projects with another C++ standard library, add e.g. `/profile libcxx-21`. -->

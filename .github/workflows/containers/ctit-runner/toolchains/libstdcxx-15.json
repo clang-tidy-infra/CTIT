@@ -1,0 +1,8 @@
+{
+  "name": "libstdcxx-15",
+  "stdlib": "libstdc++",
+  "cc": "/usr/bin/clang-21",
+  "cxx": "/usr/bin/clang++-21",
+  "gcc_install_dir": "/usr/lib/gcc/@TRIPLE@/15",
+  "library_dir": "/usr/lib/gcc/@TRIPLE@/15"
+}

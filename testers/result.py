@@ -12,6 +12,7 @@ from pathlib import Path
 
 from crash_detection.parse_check_profile import parse_profile
 from testers.generate_report import Issue, ProjectResult, parse_log_file
+from testers.toolchain import read_record
 
 OUTPUT_FILE = "ctit-result.json"
 
@@ -58,6 +59,7 @@ class Run:
     artifact_url: str | None
     project_runs: list[ProjectRun]
     baseline: Baseline | None = None
+    toolchain: dict[str, str] | None = None
 
 
 def _parse_timestamp(value: str, name: str) -> datetime:
@@ -204,6 +206,7 @@ def create_result(
         artifact_url=artifact_url,
         project_runs=_read_project_runs(log_dir, report_path),
         baseline=baseline,
+        toolchain=read_record(log_dir),
     )
 
 

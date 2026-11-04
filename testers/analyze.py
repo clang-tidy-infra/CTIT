@@ -10,12 +10,16 @@ import sys
 from dataclasses import dataclass, field
 
 from testers.config import CONFIG_FILE, PROJECTS_DIR, Project, load_projects
+from testers.toolchain import Toolchain, is_clang, write_record
 
 DEFAULT_CLANG_TIDY_BIN = "clang-tidy"
 DEFAULT_LOG_DIR = "logs"
 
 # run-clang-tidy progress lines, e.g. "[  1/165]"; they go to progress.log.
 _PROGRESS_RE = re.compile(r"^\[\s*\d+/\d+\]|^Running clang-tidy in ")
+
+# Written into a profile's build directory once its configure and build succeed.
+CONFIGURED_MARKER = "ctit-configured"
 
 ANALYSIS_CONFIG_FIELDS = {
     "cmake_source_subdir",
@@ -72,17 +76,12 @@ def _resolve_compiler(env_var: str, fallback: str) -> str:
     return os.environ.get(env_var) or shutil.which(fallback) or fallback
 
 
-def _is_clang(compiler: str) -> bool:
-    """Check if a compiler path/name is clang-based."""
-    return "clang" in os.path.basename(compiler)
-
-
 def check_clang_compiler() -> None:
     """Verify that the C/C++ compiler is clang-based."""
     cc = _resolve_compiler("CC", "cc")
     cxx = _resolve_compiler("CXX", "c++")
 
-    if not _is_clang(cc) or not _is_clang(cxx):
+    if not is_clang(cc) or not is_clang(cxx):
         print(
             f"Error: clang compiler required for clang-tidy analysis, current compiler:\n"
             f"  CC={cc}\n"
@@ -92,6 +91,20 @@ def check_clang_compiler() -> None:
             file=sys.stderr,
         )
         sys.exit(1)
+
+
+def build_dir_for(source_dir: str, toolchain: Toolchain | None) -> str:
+    """Default builds use build/; each toolchain profile gets build-ctit/<key>."""
+    if toolchain is None:
+        return os.path.join(source_dir, "build")
+    return os.path.join(source_dir, "build-ctit", toolchain.key)
+
+
+def is_configured(build_dir: str) -> bool:
+    """Whether a profile build succeeded and produced a compilation database."""
+    return os.path.isfile(os.path.join(build_dir, CONFIGURED_MARKER)) and (
+        os.path.isfile(os.path.join(build_dir, "compile_commands.json"))
+    )
 
 
 def configure_cmake(source_dir: str, build_dir: str, extra_flags: list[str]) -> None:
@@ -221,35 +234,52 @@ def configure_project(
     project: Project,
     config: AnalysisConfig,
     source_dir: str,
+    toolchain: Toolchain | None = None,
 ) -> None:
     """Configure and build a single project."""
     source_dir = os.path.abspath(source_dir)
-    build_dir = os.path.join(source_dir, "build")
+    build_dir = build_dir_for(source_dir, toolchain)
 
     cmake_source = source_dir
     if config.cmake_source_subdir:
         cmake_source = os.path.join(source_dir, config.cmake_source_subdir)
 
+    cmake_flags = config.cmake_flags
+    marker = os.path.join(build_dir, CONFIGURED_MARKER)
+    if toolchain is not None:
+        # A failed reconfiguration must not leave the previous success behind.
+        if os.path.exists(marker):
+            os.remove(marker)
+        write_record(build_dir, toolchain)
+        # Last, so the profile wins over project-wide compiler and linker flags.
+        cmake_flags = cmake_flags + toolchain.cmake_flags()
+
     print(f"[{project.name}] Configuring...")
     remove_clang_tidy_configs(source_dir)
-    configure_cmake(cmake_source, build_dir, config.cmake_flags)
+    configure_cmake(cmake_source, build_dir, cmake_flags)
     build_project(build_dir, config.build_targets)
+    if toolchain is not None:
+        open(marker, "w").close()
     print(f"[{project.name}] Done.")
 
 
 def configure(
     work_dir: str = PROJECTS_DIR,
     config_path: str = CONFIG_FILE,
+    toolchain: Toolchain | None = None,
 ) -> None:
     """Configure all projects (cmake + build targets)."""
-    check_clang_compiler()
+    if toolchain is None:
+        check_clang_compiler()
+    else:
+        print(f"Toolchain profile: {toolchain.key}")
     projects = load_projects(config_path)
     configs = get_analysis_configs(config_path)
 
     for project in projects:
         config = configs.get(project.name, AnalysisConfig(name=project.name))
         source_dir = os.path.join(work_dir, project.name)
-        configure_project(project, config, source_dir)
+        configure_project(project, config, source_dir, toolchain)
 
 
 def analyze_project(
@@ -264,10 +294,11 @@ def analyze_project(
     tidy_config: str | None = None,
     skip_headers: bool = False,
     profile: bool = False,
+    toolchain: Toolchain | None = None,
 ) -> None:
     """Run clang-tidy analysis on a single project."""
     source_dir = os.path.abspath(source_dir)
-    build_dir = os.path.join(source_dir, "build")
+    build_dir = build_dir_for(source_dir, toolchain)
     log_file = os.path.join(log_dir, f"{project.name}.log")
 
     print(f"[{project.name}] Starting analysis for check: {check_name}")
@@ -299,6 +330,7 @@ def analyze(
     config_path: str = CONFIG_FILE,
     skip_headers: bool = False,
     profile: bool = False,
+    toolchain: Toolchain | None = None,
 ) -> None:
     """Run clang-tidy analysis on all configured projects."""
     if not shutil.which(clang_tidy_bin) and not os.path.isfile(clang_tidy_bin):
@@ -326,7 +358,29 @@ def analyze(
 
     projects = load_projects(config_path)
     configs = get_analysis_configs(config_path)
+
+    if toolchain is not None:
+        print(f"Toolchain profile: {toolchain.key}")
+        unconfigured = [
+            project.name
+            for project in projects
+            if not is_configured(
+                build_dir_for(
+                    os.path.abspath(os.path.join(work_dir, project.name)), toolchain
+                )
+            )
+        ]
+        if unconfigured:
+            print(
+                f"Error: toolchain profile {toolchain.key} has no successful "
+                f"configure and build for: {', '.join(unconfigured)}\n"
+                "Run 'ctit configure --toolchain FILE' first.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
     os.makedirs(log_dir, exist_ok=True)
+    write_record(log_dir, toolchain)
 
     progress_file = os.path.join(log_dir, "progress.log")
     open(progress_file, "w").close()
@@ -346,4 +400,5 @@ def analyze(
             tidy_config,
             skip_headers,
             profile,
+            toolchain,
         )

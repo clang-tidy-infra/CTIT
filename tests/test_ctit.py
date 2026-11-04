@@ -4,6 +4,7 @@ from unittest.mock import patch
 from ctit import main
 from testers.analyze import DEFAULT_CLANG_TIDY_BIN, DEFAULT_LOG_DIR
 from testers.config import CONFIG_FILE, PROJECTS_DIR
+from testers.toolchain import Toolchain
 
 
 class TestCtitCli(unittest.TestCase):
@@ -43,14 +44,14 @@ class TestCtitCli(unittest.TestCase):
     def test_configure_calls_configure(self, mock_configure):
         main(["configure"])
         mock_configure.assert_called_once_with(
-            work_dir=PROJECTS_DIR, config_path=CONFIG_FILE
+            work_dir=PROJECTS_DIR, config_path=CONFIG_FILE, toolchain=None
         )
 
     @patch("ctit.configure")
     def test_configure_with_args(self, mock_configure):
         main(["configure", "--work-dir", "/tmp/projects", "--config", "custom.json"])
         mock_configure.assert_called_once_with(
-            work_dir="/tmp/projects", config_path="custom.json"
+            work_dir="/tmp/projects", config_path="custom.json", toolchain=None
         )
 
     @patch("ctit.analyze")
@@ -66,6 +67,7 @@ class TestCtitCli(unittest.TestCase):
             config_path=CONFIG_FILE,
             skip_headers=False,
             profile=False,
+            toolchain=None,
         )
 
     @patch("ctit.analyze")
@@ -89,6 +91,7 @@ class TestCtitCli(unittest.TestCase):
             config_path=CONFIG_FILE,
             skip_headers=False,
             profile=False,
+            toolchain=None,
         )
 
     @patch("ctit.analyze")
@@ -114,6 +117,7 @@ class TestCtitCli(unittest.TestCase):
             config_path=CONFIG_FILE,
             skip_headers=False,
             profile=False,
+            toolchain=None,
         )
 
     @patch("ctit.generate_report")
@@ -141,6 +145,34 @@ class TestCtitCli(unittest.TestCase):
             mock_report.call_args.kwargs["baseline_log_dir"], "logs/baseline"
         )
         self.assertEqual(mock_report.call_args.kwargs["baseline_revision"], "abc123")
+
+    @patch("ctit.analyze")
+    @patch("ctit.load_toolchain")
+    def test_analyze_toolchain_log_dir(self, mock_load, mock_analyze):
+        toolchain = Toolchain(
+            name="libcxx-21",
+            stdlib="libc++",
+            cc="/usr/bin/clang",
+            cxx="/usr/bin/clang++",
+            include_dir="/inc",
+            library_dir="/lib",
+        )
+        mock_load.return_value = toolchain
+        args = ["analyze", "--check-name", "c", "--toolchain", "p.json"]
+
+        main(args)
+        self.assertEqual(
+            mock_analyze.call_args.kwargs["log_dir"], f"logs/{toolchain.key}"
+        )
+        self.assertEqual(mock_analyze.call_args.kwargs["toolchain"], toolchain)
+
+        main([*args, "--log-dir", "logs"])
+        self.assertEqual(mock_analyze.call_args.kwargs["log_dir"], "logs")
+
+    def test_invalid_toolchain_exits_nonzero(self):
+        with self.assertRaises(SystemExit) as ctx:
+            main(["configure", "--toolchain", "/nonexistent/profile.json"])
+        self.assertEqual(ctx.exception.code, 1)
 
     def test_no_subcommand_exits_nonzero(self):
         with self.assertRaises(SystemExit) as ctx:
