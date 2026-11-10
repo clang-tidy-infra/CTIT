@@ -115,6 +115,49 @@ class TestParseIssue(unittest.TestCase):
             config["CheckOptions"],
         )
 
+    def _analyzer_options(self, body):
+        return json.loads(parse_body(body).tidy_config)["CheckOptions"]
+
+    def test_analyzer_option_takes_a_colon(self):
+        options = self._analyzer_options("""
+        https://github.com/llvm/llvm-project/pull/789 clang-analyzer-optin.cplusplus.UninitializedObject
+        Pedantic: true
+        """)
+        self.assertEqual(
+            options,
+            {"clang-analyzer-optin.cplusplus.UninitializedObject:Pedantic": "true"},
+        )
+
+    def test_analyzer_option_of_another_checker(self):
+        # unix.Malloc reads its options from the modeling checker behind it.
+        for line in (
+            "unix.DynamicMemoryModeling:Optimistic: true",
+            "clang-analyzer-unix.DynamicMemoryModeling:Optimistic: true",
+            "unix.DynamicMemoryModeling : Optimistic : true",
+        ):
+            with self.subTest(line=line):
+                options = self._analyzer_options(
+                    f"clang-analyzer-unix.Malloc\n{line}\n"
+                )
+                self.assertEqual(
+                    options,
+                    {"clang-analyzer-unix.DynamicMemoryModeling:Optimistic": "true"},
+                )
+
+    def test_analyzer_option_value_keeps_its_colons(self):
+        options = self._analyzer_options(
+            "clang-analyzer-core.NullDereference\n"
+            "core.NullDereference:Path: a:b\n"
+            "Other: c:d\n"
+        )
+        self.assertEqual(
+            options,
+            {
+                "clang-analyzer-core.NullDereference:Path": "a:b",
+                "clang-analyzer-core.NullDereference:Other": "c:d",
+            },
+        )
+
     def test_check_name_without_pr_link(self):
         result = parse_body("bugprone-argument-comment")
         self.assertEqual(result.pr_link, "")

@@ -13,6 +13,25 @@ class ParseResult:
     compare_baseline: bool = False
 
 
+ANALYZER_PREFIX = "clang-analyzer-"
+
+
+def _analyzer_option(check_name: str, key: str, value: str) -> tuple[str, str]:
+    """Return the CheckOptions key and value of a static analyzer option.
+
+    clang-tidy hands ``clang-analyzer-<checker>:<option>`` to the analyzer and
+    silently drops ``<checker>.<option>``. An option can belong to another
+    checker, such as the modeling checker behind the tested one, so a line may
+    name it: ``unix.DynamicMemoryModeling:Optimistic: true``.
+    """
+    # Checker names always contain a dot, option names never do.
+    if "." not in key:
+        return f"{check_name}:{key}", value
+    option, _, value = value.partition(":")
+    checker: str = key.removeprefix(ANALYZER_PREFIX)
+    return f"{ANALYZER_PREFIX}{checker}:{option.strip()}", value.strip()
+
+
 def _looks_like_pr_link(token: str) -> bool:
     return "://" in token or token.startswith("github.com/")
 
@@ -49,7 +68,9 @@ def parse_body(body: str) -> ParseResult:
         key: str = key_raw.strip()
         value: str = value_raw.strip()
 
-        if "." in key:
+        if check_name.startswith(ANALYZER_PREFIX):
+            full_key, value = _analyzer_option(check_name, key, value)
+        elif "." in key:
             prefix, actual_key = key.split(".", 1)
             if prefix != check_name:
                 print(
