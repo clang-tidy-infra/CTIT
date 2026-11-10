@@ -9,6 +9,7 @@ import posixpath
 import re
 import subprocess
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TypeAlias
 
@@ -202,6 +203,14 @@ def _checks_for_path(
     for class_name in _check_classes(repo, revision, path):
         check_names.update(checks_by_class.get((module, class_name), set()))
     return check_names
+
+
+def check_resolver(repo: str, revision: GitRev) -> Callable[[TidyPath], set[CheckName]]:
+    """Return a lookup from a source file to the checks it implements."""
+    repo = os.path.abspath(repo)
+    resolved: GitRev = _resolve_revision(repo, revision)
+    checks_by_class: ChecksByClass = _checks_by_class(repo, resolved)
+    return lambda path: _checks_for_path(repo, resolved, path, checks_by_class)
 
 
 def select_modified_checks(repo: str, base: GitRev, head: GitRev) -> SelectionResult:
