@@ -14,6 +14,7 @@ from crash_detection.detect_crashes import (
     group_by_check,
 )
 from testers.config import load_projects
+from testers.toolchain import read_record
 
 DEFAULT_LOG_DIR = "logs"
 DEFAULT_OUTPUT_FILE = "issue.md"
@@ -460,6 +461,7 @@ def generate_markdown(
     project_urls: dict[str, str] | None = None,
     baseline_results: list[ProjectResult] | None = None,
     baseline_revision: str | None = None,
+    toolchain: dict[str, str] | None = None,
 ) -> None:
     """Writes the human-facing warnings report (issue.md)."""
     if project_urls is None:
@@ -467,6 +469,11 @@ def generate_markdown(
 
     try:
         with open(output_path, "w") as f:
+            if toolchain:
+                f.write(
+                    f"Toolchain profile: `{toolchain['name']}` "
+                    f"({toolchain['stdlib']}, key `{toolchain['key']}`)\n\n"
+                )
             if baseline_revision:
                 f.write(f"Baseline LLVM revision: `{baseline_revision}`\n\n")
                 if baseline_results is None:
@@ -530,7 +537,12 @@ def generate_report(
     if baseline_log_dir is not None:
         baseline_results, _ = _load_results(baseline_log_dir)
     generate_markdown(
-        results, output, project_urls, baseline_results, baseline_revision
+        results,
+        output,
+        project_urls,
+        baseline_results,
+        baseline_revision,
+        read_record(log_dir),
     )
 
 

@@ -4,6 +4,8 @@ import sys
 from dataclasses import dataclass
 from typing import Any
 
+from testers.toolchain import NAME_RE
+
 
 @dataclass
 class ParseResult:
@@ -11,10 +13,24 @@ class ParseResult:
     check_name: str
     tidy_config: str
     compare_baseline: bool = False
+    profile: str = ""
 
 
 def _looks_like_pr_link(token: str) -> bool:
     return "://" in token or token.startswith("github.com/")
+
+
+def _parse_profile(lines: list[str]) -> str:
+    """Read the optional '/profile NAME' line."""
+    commands = [line.split() for line in lines if line.split()[0] == "/profile"]
+    if not commands:
+        return ""
+    if len(commands) > 1:
+        raise ValueError("Only one /profile line is allowed")
+    args = commands[0][1:]
+    if len(args) != 1 or not NAME_RE.fullmatch(args[0]):
+        raise ValueError("Use '/profile NAME', for example '/profile libcxx-21'")
+    return args[0]
 
 
 def parse_body(body: str) -> ParseResult:
@@ -42,7 +58,7 @@ def parse_body(body: str) -> ParseResult:
     # Parse options [OPTION_NAME]: [VALUE]
     check_options: dict[str, str] = {}
     for line in lines[1:]:
-        if ":" not in line:
+        if ":" not in line or line.split()[0] == "/profile":
             continue
 
         key_raw, value_raw = line.split(":", 1)
@@ -80,6 +96,7 @@ def parse_body(body: str) -> ParseResult:
                 for check in check_name.split(",")
             )
         ),
+        profile=_parse_profile(lines[1:]),
     )
 
 
@@ -99,6 +116,7 @@ def main() -> None:
             f.write(f"CHECK_NAME<<EOF\n{result.check_name}\nEOF\n")
             f.write(f"TIDY_CONFIG<<EOF\n{result.tidy_config}\nEOF\n")
             f.write(f"COMPARE_BASELINE={str(result.compare_baseline).lower()}\n")
+            f.write(f"PROFILE={result.profile}\n")
     except OSError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)

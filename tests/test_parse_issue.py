@@ -24,6 +24,24 @@ class TestParseIssue(unittest.TestCase):
             json.loads(result.tidy_config), {"CheckOptions": {"check.Option": "true"}}
         )
 
+    def test_profile(self):
+        result = parse_body("https://example.com/pr check\n/profile libcxx-21\nA: b")
+        self.assertEqual(result.profile, "libcxx-21")
+        self.assertEqual(
+            json.loads(result.tidy_config), {"CheckOptions": {"check.A": "b"}}
+        )
+        self.assertEqual(parse_body("check").profile, "")
+
+    def test_rejects_invalid_profile(self):
+        for body in (
+            "check\n/profile",
+            "check\n/profile a b",
+            "check\n/profile ../../etc/passwd",
+            "check\n/profile a\n/profile b",
+        ):
+            with self.subTest(body=body), self.assertRaises(ValueError):
+                parse_body(body)
+
     def test_baseline_requires_standalone_directive(self):
         result = parse_body("https://example.com/pr check\nOption: /baseline")
         self.assertFalse(result.compare_baseline)
