@@ -75,8 +75,9 @@ ctit report
 ```
 
 `build.sh` reads these optional environment variables: `CTIT_JOBS` (Ninja job
-count), `LLVM_USE_LINKER` (for example `lld` or `mold`), and
-`LLVM_TARGETS_TO_BUILD` (default `Native`). It uses `sccache` automatically
+count), `LLVM_USE_LINKER` (for example `lld` or `mold`),
+`LLVM_TARGETS_TO_BUILD` (default `Native`), and `CTIT_STATIC_ANALYZER` (`ON` to
+build the static analyzer, see below). It uses `sccache` automatically
 when it is installed.
 
 To compare against unpatched LLVM, analyze with an unpatched clang-tidy first,
@@ -88,6 +89,33 @@ ctit analyze --check-name my-check --clang-tidy-binary /path/to/unpatched/clang-
 ctit analyze --check-name my-check --clang-tidy-binary llvm-project/build/bin/clang-tidy
 ctit report --baseline-log-dir logs/baseline
 ```
+
+## Static analyzer checks
+
+`clang-analyzer-*` checks need a clang-tidy built with the static analyzer.
+Packaged clang-tidy binaries usually have it. `build.sh` leaves it out unless
+`CTIT_STATIC_ANALYZER=ON` is set:
+
+```bash
+CTIT_STATIC_ANALYZER=ON bash build.sh
+
+ctit analyze --check-name 'clang-analyzer-*' \
+  --clang-tidy-binary llvm-project/build/bin/clang-tidy \
+  --run-tidy-script llvm-project/clang-tools-extra/clang-tidy/tool/run-clang-tidy.py
+ctit report
+```
+
+`clang-analyzer-*` includes the alpha checkers, since `ctit analyze` always
+enables them. An analyzer option key joins the checker and the option with a
+colon. The option may belong to another checker than the one you run:
+
+```bash
+ctit analyze --check-name clang-analyzer-unix.Malloc \
+  --tidy-config '{"CheckOptions": {"clang-analyzer-unix.DynamicMemoryModeling:Optimistic": "true"}}'
+```
+
+A key such as `clang-analyzer-unix.Malloc.Optimistic`, with a dot, is silently
+ignored.
 
 ## Command reference
 

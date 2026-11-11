@@ -6,6 +6,7 @@ from contextlib import redirect_stderr
 from unittest.mock import MagicMock, patch
 
 from testers.analyze import (
+    needs_static_analyzer,
     AnalysisConfig,
     analyze,
     analyze_project,
@@ -192,6 +193,36 @@ class TestCheckFlags(unittest.TestCase):
         self.assertEqual(check_flags("clang-diagnostic-*lifetime*"), [])
         self.assertEqual(check_flags("-clang-diagnostic-unused-variable"), [])
         self.assertEqual(check_flags("-clang-diagnostic-lifetime-safety*"), [])
+
+
+class TestNeedsStaticAnalyzer(unittest.TestCase):
+    def test_follows_the_order_of_patterns(self):
+        for check_name, expected in (
+            ("clang-analyzer-unix.Malloc", True),
+            ("-*,clang-analyzer-core.*", True),
+            ("*", True),
+            ("clang-*", True),
+            ("clang-analyzer-*,-clang-analyzer-alpha.*", True),
+            ("*,-clang-analyzer-*", False),
+            ("*,-clang-*", False),
+            ("clang-analyzer-*,-*", False),
+            ("*,-clang-analyzer-*,clang-analyzer-unix.Malloc", True),
+            (" bugprone-* , - clang-analyzer-* ", False),
+            ("bugprone-argument-comment", False),
+            ("clang-diagnostic-lifetime-safety-*", False),
+            ("", False),
+        ):
+            with self.subTest(check_name=check_name):
+                self.assertEqual(needs_static_analyzer(check_name), expected)
+
+    def test_daily_timings_glob_keeps_every_project(self):
+        # .github/workflows/daily-check-timings.yaml
+        self.assertFalse(
+            needs_static_analyzer(
+                "*,-clang-analyzer-*,-bugprone-unchecked-optional-access,"
+                "-abseil-unchecked-statusor-access"
+            )
+        )
 
 
 class TestRunClangTidy(unittest.TestCase):
@@ -510,6 +541,43 @@ class TestAnalyze(unittest.TestCase):
             self.assertEqual(mock_analyze.call_count, 2)
             self.assertTrue(os.path.isdir(log_dir))
 
+    def _analyzed(self, check_name):
+        with (
+            tempfile.TemporaryDirectory() as tmp_dir,
+            patch("testers.analyze.load_projects") as mock_load,
+            patch("testers.analyze.get_analysis_configs") as mock_configs,
+            patch("testers.analyze.analyze_project", return_value=True) as mock_run,
+        ):
+            ct_bin = os.path.join(tmp_dir, "clang-tidy")
+            script = os.path.join(tmp_dir, "run-clang-tidy.py")
+            for path in (ct_bin, script):
+                with open(path, "w") as f:
+                    f.write("")
+            mock_load.return_value = [
+                Project(name="heavy", url="u", commit="c"),
+                Project(name="light", url="u", commit="c"),
+            ]
+            mock_configs.return_value = {
+                "heavy": AnalysisConfig(name="heavy", static_analyzer=False)
+            }
+            analyze(
+                check_name=check_name,
+                clang_tidy_bin=ct_bin,
+                run_tidy_script=script,
+                log_dir=os.path.join(tmp_dir, "logs"),
+            )
+            return [call.args[0].name for call in mock_run.call_args_list]
+
+    def test_skips_projects_excluded_from_the_static_analyzer(self):
+        self.assertEqual(self._analyzed("clang-analyzer-unix.Malloc"), ["light"])
+        self.assertEqual(self._analyzed("bugprone-*,clang-analyzer-*"), ["light"])
+
+    def test_excluded_projects_still_run_other_checks(self):
+        self.assertEqual(
+            self._analyzed("bugprone-argument-comment"), ["heavy", "light"]
+        )
+        self.assertEqual(self._analyzed("*,-clang-analyzer-*"), ["heavy", "light"])
+
     @patch("testers.analyze.analyze_project", return_value=False)
     @patch("testers.analyze.load_projects")
     def test_stops_when_clang_tidy_does_not_start(self, mock_load, mock_analyze):
@@ -555,6 +623,11 @@ class TestGetAnalysisConfigs(unittest.TestCase):
         self.assertEqual(cfg.cmake_source_subdir, "llvm")
         self.assertTrue(len(cfg.build_targets) > 0)
         self.assertIsNotNone(cfg.file_regex)
+
+    def test_llvm_project_skips_the_static_analyzer(self):
+        configs = get_analysis_configs()
+        self.assertFalse(configs["llvm-project"].static_analyzer)
+        self.assertTrue(configs["cppcheck"].static_analyzer)
 
     def test_unknown_project_not_present(self):
         configs = get_analysis_configs()
