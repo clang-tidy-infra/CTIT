@@ -1,6 +1,8 @@
+import io
 import os
 import tempfile
 import unittest
+from contextlib import redirect_stderr
 from unittest.mock import MagicMock, patch
 
 from testers.analyze import (
@@ -221,7 +223,43 @@ class TestRunClangTidy(unittest.TestCase):
             self.assertIn("/bin/clang-tidy", args)
             self.assertIn("-checks=-*,bugprone-*", args)
             self.assertIn("-quiet", args)
+            self.assertIn("-allow-enabling-alpha-checkers", args)
             self.assertNotIn("/src", " ".join(args))
+
+    def _run(self, mock_popen, lines):
+        mock_popen.return_value = self._make_mock_proc(lines)
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            log_file = os.path.join(tmp_dir, "test.log")
+            started = run_clang_tidy(
+                "/bin/clang-tidy",
+                "/script/run-clang-tidy.py",
+                "/build",
+                "bugprone-argument-coment",
+                "/src",
+                None,
+                log_file,
+                os.path.join(tmp_dir, "progress.log"),
+                None,
+            )
+            with open(log_file) as f:
+                return started, f.read()
+
+    @patch("testers.analyze.subprocess.Popen")
+    def test_reports_that_clang_tidy_ran(self, mock_popen):
+        started, _log = self._run(
+            mock_popen,
+            ["[1/1] clang-tidy a.cpp\n", "a.cpp:1:1: warning: w [check]\n"],
+        )
+        self.assertTrue(started)
+
+    @patch("testers.analyze.subprocess.Popen")
+    def test_reports_that_clang_tidy_did_not_start(self, mock_popen):
+        # What run-clang-tidy prints for a misspelled check name.
+        started, log = self._run(
+            mock_popen, ["No checks enabled.\n", "Unable to run clang-tidy.\n"]
+        )
+        self.assertFalse(started)
+        self.assertIn("No checks enabled.", log)
 
     @patch.dict(os.environ, {"CTIT_JOBS": "32"})
     @patch("testers.analyze.subprocess.Popen")
@@ -386,7 +424,8 @@ class TestAnalyzeProject(unittest.TestCase):
             name="cppcheck", url="https://example.com/p.git", commit="abc"
         )
         config = AnalysisConfig(name="cppcheck")
-        analyze_project(
+        mock_tidy.return_value = False
+        started = analyze_project(
             project,
             config,
             "/work/cppcheck",
@@ -398,6 +437,7 @@ class TestAnalyzeProject(unittest.TestCase):
         )
 
         mock_tidy.assert_called_once()
+        self.assertFalse(started)
 
 
 class TestFindRunTidyScript(unittest.TestCase):
@@ -469,6 +509,37 @@ class TestAnalyze(unittest.TestCase):
 
             self.assertEqual(mock_analyze.call_count, 2)
             self.assertTrue(os.path.isdir(log_dir))
+
+    @patch("testers.analyze.analyze_project", return_value=False)
+    @patch("testers.analyze.load_projects")
+    def test_stops_when_clang_tidy_does_not_start(self, mock_load, mock_analyze):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            ct_bin = os.path.join(tmp_dir, "clang-tidy")
+            script = os.path.join(tmp_dir, "run-clang-tidy.py")
+            for path in (ct_bin, script):
+                with open(path, "w") as f:
+                    f.write("")
+            mock_load.return_value = [
+                Project(name="a", url="u", commit="c"),
+                Project(name="b", url="u", commit="c"),
+            ]
+            log_dir = os.path.join(tmp_dir, "logs")
+            os.makedirs(log_dir)
+            with open(os.path.join(log_dir, "a.log"), "w") as f:
+                f.write("No checks enabled.\nUnable to run clang-tidy.\n")
+
+            stderr = io.StringIO()
+            with redirect_stderr(stderr), self.assertRaises(SystemExit) as ctx:
+                analyze(
+                    check_name="bugprone-argument-coment",
+                    clang_tidy_bin=ct_bin,
+                    run_tidy_script=script,
+                    log_dir=log_dir,
+                )
+
+        self.assertEqual(ctx.exception.code, 1)
+        self.assertEqual(mock_analyze.call_count, 1)
+        self.assertIn("No checks enabled.", stderr.getvalue())
 
 
 class TestGetAnalysisConfigs(unittest.TestCase):

@@ -16,6 +16,9 @@ DEFAULT_LOG_DIR = "logs"
 
 # run-clang-tidy progress lines, e.g. "[  1/165]"; they go to progress.log.
 _PROGRESS_RE = re.compile(r"^\[\s*\d+/\d+\]|^Running clang-tidy in ")
+# run-clang-tidy prints this and exits before analyzing any file when clang-tidy
+# cannot start, e.g. when no check matches -checks or the config is invalid.
+STARTUP_FAILURE = "Unable to run clang-tidy."
 
 ANALYSIS_CONFIG_FIELDS = {
     "cmake_source_subdir",
@@ -167,8 +170,11 @@ def run_clang_tidy(
     tidy_config: str | None,
     skip_headers: bool = False,
     profile: bool = False,
-) -> None:
-    """Run run-clang-tidy.py and save output to log file."""
+) -> bool:
+    """Run run-clang-tidy.py and save output to log file.
+
+    Return False if clang-tidy did not start, so no check ran.
+    """
     cmd = [
         "python3",
         "-u",
@@ -179,6 +185,7 @@ def run_clang_tidy(
         build_dir,
         f"-checks=-*,{check_name}",
         "-quiet",
+        "-allow-enabling-alpha-checkers",
         *check_flags(check_name),
     ]
 
@@ -205,16 +212,20 @@ def run_clang_tidy(
             cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
         )
         assert proc.stdout is not None
+        started = True
         for line in proc.stdout:
             if _PROGRESS_RE.match(line):
                 print(line, end="")
                 progress.write(line)
             else:
                 log.write(line)
+                if line.strip() == STARTUP_FAILURE:
+                    started = False
         proc.wait()
         elapsed = time.monotonic() - start
         log.write(f"\nCTIT analysis elapsed seconds: {elapsed:.6f}\n")
         print(f"Analysis time: {elapsed:.2f}s")
+    return started
 
 
 def configure_project(
@@ -264,15 +275,18 @@ def analyze_project(
     tidy_config: str | None = None,
     skip_headers: bool = False,
     profile: bool = False,
-) -> None:
-    """Run clang-tidy analysis on a single project."""
+) -> bool:
+    """Run clang-tidy analysis on a single project.
+
+    Return False if clang-tidy did not start.
+    """
     source_dir = os.path.abspath(source_dir)
     build_dir = os.path.join(source_dir, "build")
     log_file = os.path.join(log_dir, f"{project.name}.log")
 
     print(f"[{project.name}] Starting analysis for check: {check_name}")
 
-    run_clang_tidy(
+    started = run_clang_tidy(
         clang_tidy_bin,
         run_tidy_script,
         build_dir,
@@ -287,6 +301,7 @@ def analyze_project(
     )
 
     print(f"[{project.name}] Finished. Log saved to {log_file}")
+    return started
 
 
 def analyze(
@@ -334,7 +349,7 @@ def analyze(
     for project in projects:
         config = configs.get(project.name, AnalysisConfig(name=project.name))
         source_dir = os.path.join(work_dir, project.name)
-        analyze_project(
+        started = analyze_project(
             project,
             config,
             source_dir,
@@ -347,3 +362,12 @@ def analyze(
             skip_headers,
             profile,
         )
+        if not started:
+            log_file = os.path.join(log_dir, f"{project.name}.log")
+            with open(log_file, errors="replace") as log:
+                output = log.read().strip()
+            print(
+                f"Error: clang-tidy did not start, so no check ran:\n{output}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
