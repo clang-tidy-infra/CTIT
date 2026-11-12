@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Find llvm-project pull requests that add a brand-new clang-tidy check."""
+"""Find llvm-project pull requests that add a clang-tidy check or analyzer checker."""
 
 from __future__ import annotations
 
@@ -14,15 +14,22 @@ from pathlib import Path
 from typing import Any, TypeAlias
 
 from crash_detection.select_modified_checks import Registration, parse_registrations
+from pr_watcher.analyzer_checkers import new_analyzer_checkers, skip_reason
 from pr_watcher.github_api import GitHubClient, GitHubError
+from testers.analyze import ANALYZER_PREFIX
 
 LLVM_REPO = "llvm/llvm-project"
 DEFAULT_SINCE_HOURS = 24
 OUTPUT_FILE = "new-check-prs.json"
 
-# llvm-project labels PRs by touched path, and check PRs carry a [clang-tidy]
-# title tag by convention; the union of both keeps recall high.
-SEARCH_FILTERS: tuple[str, ...] = ("label:clang-tidy", '"clang-tidy" in:title')
+# llvm-project labels PRs by touched path, and check PRs carry a [clang-tidy] or
+# [analyzer] title tag by convention; the union of both keeps recall high.
+SEARCH_FILTERS: tuple[str, ...] = (
+    "label:clang-tidy",
+    '"clang-tidy" in:title',
+    'label:"clang:static analyzer"',
+    '"analyzer" in:title',
+)
 
 _TIDY_ROOT = "clang-tools-extra/clang-tidy/"
 _DOCS_ROOT = "clang-tools-extra/docs/clang-tidy/checks/"
@@ -220,18 +227,26 @@ def search_recent_prs(
 def collect_targets(
     client: GitHubClient, repo: str, since: str, include_drafts: bool
 ) -> list[CheckTarget]:
-    """Turn recently active clang-tidy PRs into one target per new check."""
+    """Turn recently active PRs into one target per new check or checker."""
     targets: list[CheckTarget] = []
     for pull in search_recent_prs(client, repo, since, include_drafts):
         number: int = pull["number"]
         files: list[PullFile] = client.paginate(f"repos/{repo}/pulls/{number}/files")
-        names: set[CheckName] = new_check_names(files)
-        if not names:
+        languages: dict[CheckName, str] = {
+            name: check_language(files, name) for name in new_check_names(files)
+        }
+        for name, language in new_analyzer_checkers(files).items():
+            reason: str | None = skip_reason(name)
+            if reason:
+                print(f"PR #{number}: skipping {name}: {reason}")
+                continue
+            languages[f"{ANALYZER_PREFIX}{name}"] = language
+        if not languages:
             continue
         # Only PRs that survived the filter cost this extra request; the search
         # result carries no head revision.
         head_sha: str = client.get(f"repos/{repo}/pulls/{number}")["head"]["sha"]
-        for check_name in sorted(names):
+        for check_name in sorted(languages):
             targets.append(
                 CheckTarget(
                     pr_number=number,
@@ -240,7 +255,7 @@ def collect_targets(
                     updated_at=pull["updated_at"],
                     head_sha=head_sha,
                     check_name=check_name,
-                    language=check_language(files, check_name),
+                    language=languages[check_name],
                 )
             )
     return targets
@@ -281,7 +296,9 @@ def main() -> None:
         sys.exit(1)
 
     since: str = since_timestamp(args.since_hours)
-    print(f"Searching {args.repo} for clang-tidy PRs updated since {since}")
+    print(
+        f"Searching {args.repo} for clang-tidy and analyzer PRs updated since {since}"
+    )
     try:
         targets: list[CheckTarget] = collect_targets(
             GitHubClient(token), args.repo, since, args.include_drafts
