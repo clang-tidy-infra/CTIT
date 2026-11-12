@@ -103,8 +103,11 @@ jobs:
         id: set-runner
         uses: mikehardy/runner-fallback-action@dc7732f9e532c451b2527b288ba8d58fd4b0a4ca # v1.1.0
         with:
-          primary-runner: "ARM64"
-          fallback-runner: "k8s"
+          primary-runner: "self-hosted,X64"
+          fallback-runner: "ARM64"
+          organization: ${{ github.repository_owner }}
+          primaries-required: 1
+          fallback-on-error: true
           github-token: ${{ secrets.RUNNER_ACCESS_TOKEN }}
 
   run-analysis:
