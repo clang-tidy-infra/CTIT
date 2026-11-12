@@ -51,25 +51,9 @@ jobs:
         id: head
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
-  determine-runner:
-    needs: update-submodule
-    runs-on: ubuntu-26.04
-    permissions: {}
-    timeout-minutes: 1
-    outputs:
-      runner: ${{ steps.set-runner.outputs.use-runner }}
-    steps:
-      - name: Determine runner
-        id: set-runner
-        uses: mikehardy/runner-fallback-action@dc7732f9e532c451b2527b288ba8d58fd4b0a4ca # v1.1.0
-        with:
-          primary-runner: "ARM64"
-          fallback-runner: "k8s"
-          github-token: ${{ secrets.RUNNER_ACCESS_TOKEN }}
-
   warmup:
-    needs: [update-submodule, determine-runner]
-    runs-on: ${{ fromJson(needs.determine-runner.outputs.runner) }}
+    needs: update-submodule
+    runs-on: ARM64
     container:
       image: ghcr.io/clang-tidy-infra/ctit-runner:latest # zizmor: ignore[unpinned-images]
       options: --user root
