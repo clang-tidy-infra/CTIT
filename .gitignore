@@ -9,6 +9,7 @@ venv/
 .pytest_cache
 .ruff_cache
 logs/
+batch/
 issue.md
 
 # Distribution/packaging

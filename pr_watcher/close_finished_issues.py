@@ -35,6 +35,11 @@ CLOSED = "closed"
 OPEN = "open"
 FAILED = "failed"
 
+# Issues of the bugfix track. Not a trigger label: check-tester.yaml must not
+# start on them, the batch workflow posts their results itself.
+BUGFIX_LABEL = "test-bugfix"
+TRACKED_LABELS: frozenset[str] = frozenset(TRIGGER_LABELS.values()) | {BUGFIX_LABEL}
+
 
 @dataclass(frozen=True)
 class TrackedIssue:
@@ -75,7 +80,7 @@ def fetch_tracked_issues(client: GitHubClient, repo: str) -> list[TrackedIssue]:
         if "pull_request" in payload:
             continue
         labels: set[str] = {label["name"] for label in payload.get("labels", [])}
-        if labels.isdisjoint(TRIGGER_LABELS.values()):
+        if labels.isdisjoint(TRACKED_LABELS):
             continue
         pr_number: int | None = llvm_pr_number(payload.get("body") or "")
         if pr_number is not None:

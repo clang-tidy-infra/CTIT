@@ -5,6 +5,7 @@ import unittest
 
 from crash_detection.select_modified_checks import (
     SelectionResult,
+    check_resolver,
     format_ci_output,
     format_clang_tidy_checks,
     parse_registrations,
@@ -205,6 +206,19 @@ CheckFactories.registerCheck<LLVMHeaderGuardCheck>("llvm-header-guard");
                 result.changed_utils,
                 {f"{TIDY_ROOT}/utils/TypeTraits.cpp"},
             )
+
+    def test_resolver_maps_check_sources_and_nothing_else(self):
+        with tempfile.TemporaryDirectory() as root:
+            self._base_fixture(root)
+            resolve = check_resolver(root, "HEAD")
+
+            for extension in ("cpp", "h"):
+                self.assertEqual(
+                    resolve(f"{TIDY_ROOT}/modernize/UseAutoCheck.{extension}"),
+                    {"modernize-use-auto"},
+                )
+            self.assertEqual(resolve(f"{TIDY_ROOT}/utils/Helper.cpp"), set())
+            self.assertEqual(resolve("clang/lib/AST/Decl.cpp"), set())
 
     def test_test_only_commit_selects_nothing(self):
         with tempfile.TemporaryDirectory() as root:

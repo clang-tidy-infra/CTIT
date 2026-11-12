@@ -95,6 +95,15 @@ class TestFetchTrackedIssues(unittest.TestCase):
             [TrackedIssue(1, 10), TrackedIssue(2, 20)],
         )
 
+    def test_tracks_issues_of_the_bugfix_track(self):
+        url = "https://github.com/llvm/llvm-project/pull/30"
+        client = FakeClient(
+            issues=[_issue_payload(3, f"{url} check", labels=("test-bugfix",))]
+        )
+        self.assertEqual(
+            fetch_tracked_issues(client, "org/ctit"), [TrackedIssue(3, 30)]
+        )
+
 
 class TestCloseFinishedIssues(unittest.TestCase):
     def test_closes_issues_of_merged_and_closed_pull_requests(self):

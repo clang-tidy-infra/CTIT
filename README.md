@@ -12,6 +12,7 @@ run the same clone, build, analyze, and report steps on your own machine.
 
 - [Test a check from an LLVM pull request](#test-a-check-from-an-llvm-pull-request)
 - [Run CTIT locally](docs/local-usage.md)
+- [Bugfix batch track](docs/bugfix-batch.md)
 - [Test projects](docs/test-projects.md)
 - [Contributing to CTIT](CONTRIBUTING.md)
 
