@@ -145,6 +145,112 @@
         "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"
       ],
       "file_regex": "(?!contrib/).*"
+    },
+    "cxxopts": {
+      "url": "https://github.com/jarro2783/cxxopts.git",
+      "commit": "794c975287355de48158d9a80ed502d26b20a472",
+      "cmake_flags": [
+        "-DCMAKE_POLICY_VERSION_MINIMUM=3.5",
+        "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"
+      ]
+    },
+    "box2d": {
+      "url": "https://github.com/erincatto/box2d.git",
+      "commit": "1025f9a10949b963d6311995910bdd04f72dae6c",
+      "cmake_flags": [
+        "-DBOX2D_BUILD_UNIT_TESTS=OFF",
+        "-DBOX2D_BUILD_TESTBED=OFF",
+        "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"
+      ]
+    },
+    "symengine": {
+      "url": "https://github.com/symengine/symengine.git",
+      "commit": "4f669d5954977e86f4da0f53cb5110d2eb6320b6",
+      "cmake_flags": [
+        "-DCMAKE_POLICY_VERSION_MINIMUM=3.5",
+        "-DWITH_COTIRE=OFF",
+        "-DBUILD_TESTS=OFF",
+        "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"
+      ]
+    },
+    "tinyspline": {
+      "url": "https://github.com/msteinbeck/tinyspline.git",
+      "commit": "f8b1ab7ec2a2bf43220044fe32c9869a5f6c3469",
+      "cmake_flags": [
+        "-DCMAKE_POLICY_VERSION_MINIMUM=3.5",
+        "-DCMAKE_C_FLAGS=-Wno-error=strict-prototypes",
+        "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"
+      ],
+      "file_regex": "(?!src/parson\\.c$|test/c/cutest/).*"
+    },
+    "oatpp": {
+      "url": "https://github.com/oatpp/oatpp.git",
+      "commit": "d3e60fbcdff4937b720c1d1d4d172020687b9d4b",
+      "cmake_flags": [
+        "-DCMAKE_POLICY_VERSION_MINIMUM=3.5",
+        "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"
+      ]
+    },
+    "libsoundio": {
+      "url": "https://github.com/andrewrk/libsoundio.git",
+      "commit": "b810bf2e9c4afc822c4843322cd08f7b36668109",
+      "cmake_flags": [
+        "-DCMAKE_POLICY_VERSION_MINIMUM=3.5",
+        "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"
+      ]
+    },
+    "simbody": {
+      "url": "https://github.com/simbody/simbody.git",
+      "commit": "5cf513d98ed3da0e0991ad9c7a21f684d19afd6c",
+      "cmake_flags": [
+        "-DCMAKE_POLICY_VERSION_MINIMUM=3.5",
+        "-DBUILD_VISUALIZER=OFF",
+        "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"
+      ]
+    },
+    "duckdb": {
+      "url": "https://github.com/cwida/duckdb.git",
+      "commit": "d098c9ff5d3a5dc98ba1ba17ae7c061eecf05e88",
+      "cmake_flags": [
+        "-DCMAKE_POLICY_VERSION_MINIMUM=3.5",
+        "-DDISABLE_UNITY=1",
+        "-DCMAKE_CXX_FLAGS=-DCATCH_CONFIG_NO_POSIX_SIGNALS",
+        "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"
+      ],
+      "file_regex": "(?!third_party/|tools/shell/).*"
+    },
+    "fmt": {
+      "url": "https://github.com/fmtlib/fmt.git",
+      "commit": "5e7c70e2061e59aef58146b55f9f7fd0a7505a6d",
+      "cmake_flags": [
+        "-DCMAKE_POLICY_VERSION_MINIMUM=3.5",
+        "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"
+      ],
+      "file_regex": "(?!test/gmock-gtest-all\\.cc$).*"
+    },
+    "re2": {
+      "url": "https://github.com/google/re2.git",
+      "commit": "2b25567a8ee3b6e97c3cd05d616f296756c52759",
+      "cmake_flags": ["-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"]
+    },
+    "harfbuzz": {
+      "url": "https://github.com/harfbuzz/harfbuzz.git",
+      "commit": "f8d345ee06596f90f0588d97e012dd3f62245897",
+      "cmake_flags": [
+        "-DCMAKE_POLICY_VERSION_MINIMUM=3.5",
+        "-DCMAKE_CXX_FLAGS=-DHB_NO_PRAGMA_GCC_DIAGNOSTIC_ERROR",
+        "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"
+      ]
+    },
+    "capnproto": {
+      "url": "https://github.com/capnproto/capnproto.git",
+      "commit": "8be1c9fd754b1fca40fd385e19095d34e832d2c5",
+      "cmake_flags": [
+        "-DCMAKE_POLICY_VERSION_MINIMUM=3.5",
+        "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"
+      ],
+      "build_targets": ["test_capnp"],
+      "file_regex": "(?!build/).*"
     }
   }
 }

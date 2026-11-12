@@ -15,6 +15,7 @@ RUN apt-get update && \
     python3-argcomplete \
     python3-yaml \
     zlib1g-dev \
+    libgmp-dev \
     flex \
     bison \
     libx11-dev \
