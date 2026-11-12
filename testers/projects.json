@@ -152,6 +152,7 @@
       "commit": "794c975287355de48158d9a80ed502d26b20a472",
       "cmake_flags": [
         "-DCMAKE_POLICY_VERSION_MINIMUM=3.5",
+        "-DCMAKE_CXX_FLAGS=-include stdint.h",
         "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"
       ]
     },
@@ -215,7 +216,7 @@
       "cmake_flags": [
         "-DCMAKE_POLICY_VERSION_MINIMUM=3.5",
         "-DDISABLE_UNITY=1",
-        "-DCMAKE_CXX_FLAGS=-DCATCH_CONFIG_NO_POSIX_SIGNALS",
+        "-DCMAKE_CXX_FLAGS=-DCATCH_CONFIG_NO_POSIX_SIGNALS -include stdint.h",
         "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"
       ],
       "file_regex": "(?!third_party/|tools/shell/).*"
@@ -248,6 +249,7 @@
       "commit": "8be1c9fd754b1fca40fd385e19095d34e832d2c5",
       "cmake_flags": [
         "-DCMAKE_POLICY_VERSION_MINIMUM=3.5",
+        "-DCMAKE_CXX_FLAGS=-include stdint.h",
         "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"
       ],
       "build_targets": ["test_capnp"],
