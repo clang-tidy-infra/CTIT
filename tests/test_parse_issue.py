@@ -158,6 +158,23 @@ class TestParseIssue(unittest.TestCase):
             },
         )
 
+    def test_static_analyzer_only_for_globs_that_reach_it(self):
+        for check_name, expected in (
+            ("clang-analyzer-unix.Malloc", True),
+            ("clang-analyzer-alpha.*", True),
+            ("clang-analyzer-*", True),
+            ("clang-*", True),
+            ("*", True),
+            ("bugprone-*,clang-analyzer-core.NullDereference", True),
+            ("bugprone-argument-comment", False),
+            ("bugprone-*,-clang-analyzer-*", False),
+            ("*,-clang-analyzer-*", False),
+            ("clang-diagnostic-lifetime-safety-*", False),
+            ("clang-diagnostic-error", False),
+        ):
+            with self.subTest(check_name=check_name):
+                self.assertEqual(parse_body(check_name).static_analyzer, expected)
+
     def test_check_name_without_pr_link(self):
         result = parse_body("bugprone-argument-comment")
         self.assertEqual(result.pr_link, "")

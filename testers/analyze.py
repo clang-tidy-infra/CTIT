@@ -25,7 +25,10 @@ ANALYSIS_CONFIG_FIELDS = {
     "cmake_flags",
     "build_targets",
     "file_regex",
+    "static_analyzer",
 }
+
+ANALYZER_PREFIX = "clang-analyzer-"
 
 
 @dataclass
@@ -37,6 +40,7 @@ class AnalysisConfig:
     cmake_flags: list[str] = field(default_factory=list)
     build_targets: list[str] = field(default_factory=list)
     file_regex: str | None = None
+    static_analyzer: bool = True
 
 
 def get_analysis_configs(
@@ -51,6 +55,29 @@ def get_analysis_configs(
         fields = {k: v for k, v in proj.items() if k in ANALYSIS_CONFIG_FIELDS}
         configs[name] = AnalysisConfig(name=name, **fields)
     return configs
+
+
+def needs_static_analyzer(check_name: str) -> bool:
+    """Whether the -checks glob enables any clang-analyzer-* check.
+
+    As in clang-tidy, a later pattern overrides an earlier one, so
+    ``*,-clang-analyzer-*`` enables none. A positive pattern counts if it can
+    match an analyzer check, a negative one only if it matches all of them.
+    """
+    enabled = False
+    for pattern in check_name.split(","):
+        pattern = pattern.strip()
+        negative = pattern.startswith("-")
+        pattern = pattern.removeprefix("-").strip()
+        if not pattern:
+            continue
+        literal = pattern.split("*", 1)[0]
+        if negative:
+            if pattern == f"{literal}*" and ANALYZER_PREFIX.startswith(literal):
+                enabled = False
+        elif ANALYZER_PREFIX.startswith(literal) or literal.startswith(ANALYZER_PREFIX):
+            enabled = True
+    return enabled
 
 
 def find_run_tidy_script() -> str | None:
@@ -346,8 +373,12 @@ def analyze(
     progress_file = os.path.join(log_dir, "progress.log")
     open(progress_file, "w").close()
 
+    static_analyzer = needs_static_analyzer(check_name)
     for project in projects:
         config = configs.get(project.name, AnalysisConfig(name=project.name))
+        if static_analyzer and not config.static_analyzer:
+            print(f"[{project.name}] Skipped: excluded from static analyzer checks")
+            continue
         source_dir = os.path.join(work_dir, project.name)
         started = analyze_project(
             project,

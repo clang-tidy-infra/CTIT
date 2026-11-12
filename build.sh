@@ -6,6 +6,7 @@ BUILD_DIR="llvm-project/build"
 CMAKE_BUILD_TYPE="Release"
 LLVM_ENABLE_PROJECTS="clang;clang-tools-extra"
 LLVM_TARGETS_TO_BUILD="${LLVM_TARGETS_TO_BUILD:-Native}"
+STATIC_ANALYZER="${CTIT_STATIC_ANALYZER:-OFF}"
 
 echo "Starting build process"
 
@@ -35,7 +36,7 @@ cmake -G Ninja \
     -DLLVM_INCLUDE_BENCHMARKS=OFF \
     -DLLVM_INCLUDE_EXAMPLES=OFF \
     -DLLVM_INCLUDE_TESTS=OFF \
-    -DCLANG_TIDY_ENABLE_STATIC_ANALYZER=OFF \
+    -DCLANG_TIDY_ENABLE_STATIC_ANALYZER="$STATIC_ANALYZER" \
     "${CMAKE_EXTRA_ARGS[@]}"
 
 echo "Building clang-tidy and llvm-symbolizer"

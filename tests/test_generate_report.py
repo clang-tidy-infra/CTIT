@@ -460,6 +460,34 @@ class TestNotes(unittest.TestCase):
         self.assertIn("1. `a.cpp:1` Calling 'f&lt;int&gt;' &amp; more\n", f.getvalue())
 
 
+class TestAnalyzerNotes(unittest.TestCase):
+    def _render(self, check_name, count):
+        issue = Issue("a.cpp", 1, 1, "warning", "msg", check_name)
+        issue.notes.extend(
+            Note("a.cpp", n, f"step {n}", True) for n in range(1, count + 1)
+        )
+        f = io.StringIO()
+        write_project_details(f, ProjectResult(name="p", issues=[issue]), {})
+        return f.getvalue()
+
+    def test_keeps_the_end_of_a_long_path(self):
+        output = self._render("clang-analyzer-core.NullDereference", 15)
+        self.assertIn("_5 earlier notes omitted, see the log._", output)
+        self.assertNotIn("step 5\n", output)
+        self.assertIn("6. `a.cpp:6` step 6\n", output)
+        self.assertIn("15. `a.cpp:15` step 15\n", output)
+
+    def test_short_path_is_complete(self):
+        output = self._render("clang-analyzer-core.NullDereference", 10)
+        self.assertNotIn("omitted", output)
+        self.assertIn("1. `a.cpp:1` step 1\n", output)
+
+    def test_other_checks_keep_every_note(self):
+        output = self._render("readability-function-cognitive-complexity", 15)
+        self.assertNotIn("omitted", output)
+        self.assertIn("1. `a.cpp:1` step 1\n", output)
+
+
 class TestWriteProjectDetails(unittest.TestCase):
     def test_no_issues_no_crash_writes_nothing(self):
         f = io.StringIO()

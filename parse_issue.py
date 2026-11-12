@@ -4,6 +4,8 @@ import sys
 from dataclasses import dataclass
 from typing import Any
 
+from testers.analyze import ANALYZER_PREFIX, needs_static_analyzer
+
 
 @dataclass
 class ParseResult:
@@ -11,9 +13,7 @@ class ParseResult:
     check_name: str
     tidy_config: str
     compare_baseline: bool = False
-
-
-ANALYZER_PREFIX = "clang-analyzer-"
+    static_analyzer: bool = False
 
 
 def _analyzer_option(check_name: str, key: str, value: str) -> tuple[str, str]:
@@ -101,6 +101,7 @@ def parse_body(body: str) -> ParseResult:
                 for check in check_name.split(",")
             )
         ),
+        static_analyzer=needs_static_analyzer(check_name),
     )
 
 
@@ -120,6 +121,9 @@ def main() -> None:
             f.write(f"CHECK_NAME<<EOF\n{result.check_name}\nEOF\n")
             f.write(f"TIDY_CONFIG<<EOF\n{result.tidy_config}\nEOF\n")
             f.write(f"COMPARE_BASELINE={str(result.compare_baseline).lower()}\n")
+            f.write(
+                f"CTIT_STATIC_ANALYZER={'ON' if result.static_analyzer else 'OFF'}\n"
+            )
     except OSError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)

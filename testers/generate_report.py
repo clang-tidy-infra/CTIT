@@ -20,6 +20,7 @@ DEFAULT_OUTPUT_FILE = "issue.md"
 MAX_CRASH_EXAMPLES = 3
 RESULTS_MARKER = "<!-- ctit-results -->"
 MAX_DIFF_LIST_CHARS = 25_000
+MAX_ANALYZER_NOTES = 10
 
 
 @dataclass
@@ -275,7 +276,12 @@ def format_issue(issue: Issue, base_url: str | None, project: str | None = None)
     text = f"#### {icon} {loc_text}\n{issue.message} `[{issue.check_name}]`\n"
     if issue.context:
         text += f"  ```cpp\n  {issue.context}\n  ```\n"
-    return text + format_notes(issue.notes, base_url)
+    notes: list[Note] = issue.notes
+    omitted = 0
+    if issue.check_name.startswith("clang-analyzer-"):
+        omitted = max(0, len(notes) - MAX_ANALYZER_NOTES)
+        notes = notes[omitted:]
+    return text + format_notes(notes, base_url, omitted)
 
 
 def write_diff_list(
@@ -378,12 +384,17 @@ def write_project_details(
     f.write("\n</details>\n")
 
 
-def format_notes(notes: list[Note], base_url: str | None) -> str:
-    """Returns the notes of a diagnostic as a numbered list."""
+def format_notes(notes: list[Note], base_url: str | None, omitted: int = 0) -> str:
+    """Returns the notes of a diagnostic as a numbered list.
+
+    omitted earlier notes are left out; the list keeps their numbering.
+    """
     if not notes:
         return ""
     lines = ["Notes:\n"]
-    for number, note in enumerate(notes, 1):
+    if omitted:
+        lines.append(f"_{_count(omitted, 'earlier note')} omitted, see the log._\n\n")
+    for number, note in enumerate(notes, omitted + 1):
         location = f"{note.file_path}:{note.line}"
         if note.in_project and base_url:
             location = f"[{location}]({base_url}/{note.file_path}#L{note.line})"

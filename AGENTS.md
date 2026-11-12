@@ -48,6 +48,22 @@ instead (all relative to `llvm-project/`):
 - **Regression examples** - `clang/test/Sema/LifetimeSafety/`. CTIT excludes test
   files when applying PR patches, so these tests may not include the PR's changes.
 
+For `clang-analyzer-<checker>` (e.g. `clang-analyzer-unix.Malloc`), the warning
+comes from the **Clang Static Analyzer** checker `<checker>`, not a clang-tidy
+check. Use these paths instead (all relative to `llvm-project/`):
+
+- **Docs** - `clang/docs/analyzer/checkers.md`, and
+  `clang-tools-extra/docs/clang-tidy/checks/clang-analyzer/<checker>.md`.
+- **Checker names, options, and dependencies** -
+  `clang/include/clang/StaticAnalyzer/Checkers/Checkers.td`.
+- **Implementation** - `clang/lib/StaticAnalyzer/Checkers/`. One file often
+  implements several checkers (e.g. `MallocChecker.cpp`).
+- **Regression examples** - `clang/test/Analysis/`. CTIT excludes test files
+  when applying PR patches, so these tests may not include the PR's changes.
+
+The notes of an analyzer warning trace one execution path. `issue.md` shows only
+the last notes of a long path, so read the full path in `logs/<project>.log`.
+
 Use the checked-out implementation and diagnostic text to resolve gaps in the
 documentation. Do not assume upstream's latest behavior matches the tested revision.
 
