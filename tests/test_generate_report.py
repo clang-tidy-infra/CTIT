@@ -497,14 +497,14 @@ class TestWriteProjectDetails(unittest.TestCase):
         write_project_details(f, result, {})
         self.assertEqual(f.getvalue(), "")
 
-    def test_crash_banner(self):
+    def test_crash_without_stack_dump(self):
         f = io.StringIO()
         result = ProjectResult(name="proj", has_crash=True)
         write_project_details(f, result, {})
         output = f.getvalue()
-        self.assertIn("CRASH DETECTED", output)
         self.assertIn("<details>", output)
         self.assertIn("proj Details (0 warnings, 0 errors, crashed)", output)
+        self.assertIn("_Crashed, but the log has no stack dump._", output)
 
     def test_crash_details_include_stack_dump(self):
         f = io.StringIO()
@@ -519,6 +519,7 @@ class TestWriteProjectDetails(unittest.TestCase):
         self.assertIn("**`bugprone-x`**", output)
         self.assertIn("Stack dump:", output)
         self.assertIn("ASTMatcher: Processing", output)
+        self.assertNotIn("no stack dump", output)
         # Nested <details> would break comment slimming.
         self.assertEqual(output.count("<details>"), 1)
 
@@ -532,7 +533,6 @@ class TestWriteProjectDetails(unittest.TestCase):
         result = ProjectResult(name="proj", has_crash=True, crashes=crashes)
         write_project_details(f, result, {})
         output = f.getvalue()
-        self.assertIn("(3 crash(es))", output)
         self.assertIn("proj Details (0 warnings, 0 errors, 3 crashes)", output)
         self.assertIn("**`check-a`** - 2 crash(es)", output)
         self.assertIn("**`check-b`** - 1 crash(es)", output)

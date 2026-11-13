@@ -107,7 +107,7 @@ def write_markdown(
         detailed_lines = lines.copy()
         if len(profiles) > 1:
             detailed_lines.append(
-                "<details>\n<summary>Per-project breakdown (click to expand)</summary>\n\n"
+                "<details>\n<summary>Per-project breakdown</summary>\n\n"
             )
             for project, (total_wall, checks) in sorted(profiles.items()):
                 detailed_lines.append(
