@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 from crash_detection.detect_crashes import Crash
 from testers.generate_report import (
+    MAX_ANALYZER_NOTES,
     MAX_CRASH_EXAMPLES,
     Issue,
     Note,
@@ -471,14 +472,15 @@ class TestAnalyzerNotes(unittest.TestCase):
         return f.getvalue()
 
     def test_keeps_the_end_of_a_long_path(self):
-        output = self._render("clang-analyzer-core.NullDereference", 15)
+        total = MAX_ANALYZER_NOTES + 5
+        output = self._render("clang-analyzer-core.NullDereference", total)
         self.assertIn("_5 earlier notes omitted, see the log._", output)
         self.assertNotIn("step 5\n", output)
         self.assertIn("6. `a.cpp:6` step 6\n", output)
-        self.assertIn("15. `a.cpp:15` step 15\n", output)
+        self.assertIn(f"{total}. `a.cpp:{total}` step {total}\n", output)
 
     def test_short_path_is_complete(self):
-        output = self._render("clang-analyzer-core.NullDereference", 10)
+        output = self._render("clang-analyzer-core.NullDereference", MAX_ANALYZER_NOTES)
         self.assertNotIn("omitted", output)
         self.assertIn("1. `a.cpp:1` step 1\n", output)
 

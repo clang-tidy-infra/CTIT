@@ -3,17 +3,20 @@
 
 Algorithm:
   1. If content fits within limit -> return as-is.
-  2. If too long -> strip AI analysis.
-  3. If still too long -> strip per-project findings.
+  2. If too long -> strip the notes of each diagnostic.
+  3. If still too long -> also strip AI analysis.
+  4. If still too long -> strip per-project findings.
 """
 
 import argparse
+import re
 import sys
 
 from testers.generate_report import RESULTS_MARKER
 
 GITHUB_COMMENT_LIMIT = 65536
 _AI_MARKER = "AI False-Positive Analysis"
+_NOTES_PATTERN = re.compile(r"^Notes:\n(?:_[^\n]*_\n\n)?(?:\d+\. [^\n]*\n)+", re.M)
 
 
 def _find_details_blocks(text: str) -> list[tuple[int, int]]:
@@ -46,6 +49,17 @@ def _remove_spans(text: str, spans: list[tuple[int, int]]) -> str:
     return "".join(parts)
 
 
+def _strip_notes(text: str) -> str:
+    """Return *text* without diagnostic notes, saying so if it had any."""
+    stripped, count = _NOTES_PATTERN.subn("", text)
+    if not count:
+        return text
+    return (
+        stripped.rstrip()
+        + "\n\n_Diagnostic notes are omitted to fit the comment size limit._"
+    )
+
+
 def slim_comment(content: str, artifact_url: str) -> str:
     """Return content slimmed to fit within GITHUB_COMMENT_LIMIT."""
     if len(content) <= GITHUB_COMMENT_LIMIT:
@@ -60,14 +74,16 @@ def slim_comment(content: str, artifact_url: str) -> str:
         ("", content) if marker == -1 else (content[:marker], content[marker:])
     )
 
+    results = _strip_notes(results)
+    slimmed = kept + results.rstrip() + artifact_link
+    if len(slimmed) <= GITHUB_COMMENT_LIMIT:
+        return slimmed
+
     spans = _find_details_blocks(results)
     ai_spans = [(s, e) for s, e in spans if _AI_MARKER in results[s:e]]
-
-    # Drop the AI analysis first.
-    if ai_spans:
-        candidate = kept + _remove_spans(results, ai_spans).rstrip() + artifact_link
-        if len(candidate) <= GITHUB_COMMENT_LIMIT:
-            return candidate
+    slimmed = kept + _remove_spans(results, ai_spans).rstrip() + artifact_link
+    if len(slimmed) <= GITHUB_COMMENT_LIMIT:
+        return slimmed
 
     # If still too long keep only what comes before the first <details> block.
     first_details = results.find("<details>")
