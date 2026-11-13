@@ -502,6 +502,7 @@ class TestWriteProjectDetails(unittest.TestCase):
         output = f.getvalue()
         self.assertIn("CRASH DETECTED", output)
         self.assertIn("<details>", output)
+        self.assertIn("proj Details (0 warnings, 0 errors, crashed)", output)
 
     def test_crash_details_include_stack_dump(self):
         f = io.StringIO()
@@ -530,6 +531,7 @@ class TestWriteProjectDetails(unittest.TestCase):
         write_project_details(f, result, {})
         output = f.getvalue()
         self.assertIn("(3 crash(es))", output)
+        self.assertIn("proj Details (0 warnings, 0 errors, 3 crashes)", output)
         self.assertIn("**`check-a`** - 2 crash(es)", output)
         self.assertIn("**`check-b`** - 1 crash(es)", output)
         # Only the first occurrence of a check is shown.
@@ -561,6 +563,7 @@ class TestWriteProjectDetails(unittest.TestCase):
         result = ProjectResult(name="proj", warnings_count=1, issues=[issue])
         write_project_details(f, result, {})
         output = f.getvalue()
+        self.assertIn("proj Details (1 warnings, 0 errors, 0 crashes)", output)
         self.assertIn("src/file.cpp", output)
         self.assertIn("unused var", output)
         self.assertIn("`[bugprone-unused]`", output)
