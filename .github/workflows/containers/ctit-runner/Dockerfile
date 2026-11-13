@@ -7,6 +7,7 @@ RUN apt-get update && \
     cmake \
     curl \
     ninja-build \
+    pkg-config \
     build-essential \
     mold \
     python3 \
