@@ -372,7 +372,15 @@ def write_project_details(
     if not result.issues and not result.has_crash:
         return
 
-    summary_text = f"{result.name} Details ({result.warnings_count} warnings, {result.errors_count} errors)"
+    if result.crashes:
+        crash_text = f"{len(result.crashes)} crashes"
+    else:
+        # A segfault without a stack dump leaves no count.
+        crash_text = "crashed" if result.has_crash else "0 crashes"
+    summary_text = (
+        f"{result.name} Details ({result.warnings_count} warnings, "
+        f"{result.errors_count} errors, {crash_text})"
+    )
     f.write(f"\n<details>\n<summary><strong>{summary_text}</strong></summary>\n\n")
 
     if result.has_crash:

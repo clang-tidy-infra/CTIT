@@ -21,7 +21,7 @@ _SUMMARY = """\
 
 _PROJECT_DETAILS = """\
 <details>
-<summary><strong>cppcheck Details (3 warnings, 0 errors)</strong></summary>
+<summary><strong>cppcheck Details (3 warnings, 0 errors, 0 crashes)</strong></summary>
 
 #### ⚠️ [lib/token.cpp:10](https://github.com/danmar/cppcheck/blob/main/lib/token.cpp#L10)
 bad usage `[misc-use-braced-initialization]`
@@ -59,7 +59,7 @@ def _huge_ai() -> str:
 
 def _huge_project_details() -> str:
     return (
-        "<details>\n<summary><strong>cppcheck Details (9999 warnings, 0 errors)</strong></summary>\n"
+        "<details>\n<summary><strong>cppcheck Details (9999 warnings, 0 errors, 0 crashes)</strong></summary>\n"
         + "x" * GITHUB_COMMENT_LIMIT
         + "\n</details>\n"
     )
