@@ -16,8 +16,23 @@ SEGFAULT_PATTERN = re.compile(r"Segmentation fault")
 _PROCESSING_PATTERN = re.compile(r"(?:Processing|Matching) '([^']+)' against")
 # Stack dump item 1 describes the phase when the crash occurred.
 _STACK_PHASE = re.compile(r"^\s*1\.\s+(.+)$")
+# Stack dump items of the static analyzer, e.g.
+#   2.	While analyzing stack:
+#   	#0 Calling inlined(int, float) at line 17
+#   	#1 Calling test()
+#   3.	/src/a.cpp:13:3: Error evaluating statement
+# See PrettyStackTraceStackFrame.h and ExprEngine.cpp in clang/lib/StaticAnalyzer.
+_ANALYZING_STACK = re.compile(r"^\s*\d+\.\s+While analyzing stack:")
+_ANALYZED_CALL = re.compile(r"^\s*#\d+ Calling (.+?)(?: at line .*)?$")
+_ANALYZER_ERROR = re.compile(
+    r"^\s*\d+\.\s+(?:(.+):(\d+):\d+: )?(Error evaluating .+?)\s*$"
+)
+# Catches analyzer crashes that leave none of the items above, e.g. in a checker
+# building its bug report. Needs a symbolized backtrace.
+_ANALYZER_FRAME = re.compile(r"\bclang::ento::")
 MAX_CRASH_LINES = 30
 UNKNOWN_CHECK = "unknown"
+ANALYZER_CRASH = "clang-analyzer"
 _PREFERRED_PROJECT = "llvm-project"
 
 
@@ -29,16 +44,55 @@ class Crash:
     lines: list[str]
 
 
+@dataclass
+class AnalyzerSite:
+    """Where in the analyzed code the static analyzer crashed."""
+
+    function: str | None = None
+    file_path: str | None = None
+    line: int | None = None
+    phase: str | None = None
+
+
+def analyzer_site(context: list[str]) -> AnalyzerSite | None:
+    """Return where the analyzer crashed, or None without analyzer items."""
+    site = AnalyzerSite()
+    found = False
+    in_stack = False
+    # Later items are deeper, so the first call of the last stack and the
+    # last error win.
+    for line in context:
+        if _ANALYZING_STACK.match(line):
+            found, in_stack, site.function = True, True, None
+        elif in_stack and (call := _ANALYZED_CALL.match(line)):
+            site.function = site.function or call.group(1)
+        else:
+            in_stack = False
+            error = _ANALYZER_ERROR.match(line)
+            if error:
+                found = True
+                site.phase = error.group(3)
+                if error.group(1):
+                    site.file_path, site.line = error.group(1), int(error.group(2))
+    return site if found else None
+
+
 def check_from_context(context: list[str]) -> str:
     """Extract the crashing check name from the stack dump context.
 
-    Falls back to the stack dump phase (item 1) when no ASTMatcher check is
-    present, which happens for crashes during parsing or preprocessing.
+    An analyzer crash has no ASTMatcher check, so it is named after the
+    analyzer and the phase it crashed in. Other crashes without one, e.g.
+    during parsing or preprocessing, fall back to the stack dump phase (item 1).
     """
     for line in context:
         m = _PROCESSING_PATTERN.search(line)
         if m:
             return m.group(1)
+    site = analyzer_site(context)
+    if site is not None and site.phase:
+        return f"{ANALYZER_CRASH} ({site.phase})"
+    if site is not None or any(_ANALYZER_FRAME.search(line) for line in context):
+        return ANALYZER_CRASH
     for line in context:
         m = _STACK_PHASE.match(line)
         if m:

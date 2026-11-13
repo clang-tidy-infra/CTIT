@@ -519,8 +519,35 @@ class TestWriteProjectDetails(unittest.TestCase):
         self.assertIn("**`bugprone-x`**", output)
         self.assertIn("Stack dump:", output)
         self.assertIn("ASTMatcher: Processing", output)
+        self.assertNotIn("Crashed", output)
         # Nested <details> would break comment slimming.
         self.assertEqual(output.count("<details>"), 1)
+
+    def test_analyzer_crash_names_where_it_crashed(self):
+        lines = [
+            "Stack dump:\n",
+            "1.\t<eof> parser at end of file\n",
+            "2.\tWhile analyzing stack: \n",
+            "\t#0 Calling foo(int) at line 7\n",
+            "3.\t/w/test_projects/proj/src/a.cpp:13:3: Error evaluating statement\n",
+        ]
+        crash = Crash(check="clang-analyzer (Error evaluating statement)", lines=lines)
+        result = ProjectResult(name="proj", has_crash=True, crashes=[crash])
+        f = io.StringIO()
+        write_project_details(f, result, {"proj": "https://example.com/blob/abc"})
+        self.assertIn(
+            "Crashed while analyzing `foo(int)` at "
+            "[src/a.cpp:13](https://example.com/blob/abc/src/a.cpp#L13).\n",
+            f.getvalue(),
+        )
+
+    def test_analyzer_crash_outside_the_project(self):
+        lines = ["3.\t/usr/include/x.h:5:1: Error evaluating statement\n"]
+        crash = Crash(check="clang-analyzer (Error evaluating statement)", lines=lines)
+        result = ProjectResult(name="proj", has_crash=True, crashes=[crash])
+        f = io.StringIO()
+        write_project_details(f, result, {"proj": "https://example.com/blob/abc"})
+        self.assertIn("Crashed at `/usr/include/x.h:5`.\n", f.getvalue())
 
     def test_crash_details_group_by_check(self):
         f = io.StringIO()

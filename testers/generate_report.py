@@ -8,8 +8,10 @@ from dataclasses import dataclass, field
 from typing import TextIO
 
 from crash_detection.detect_crashes import (
+    AnalyzerSite,
     Crash,
     SEGFAULT_PATTERN,
+    analyzer_site,
     find_crashes_in_lines,
     group_by_check,
 )
@@ -383,10 +385,10 @@ def write_project_details(
     )
     f.write(f"\n<details>\n<summary><strong>{summary_text}</strong></summary>\n\n")
 
-    if result.has_crash:
-        write_crash_details(f, result)
-
     base_url = project_urls.get(result.name)
+    if result.has_crash:
+        write_crash_details(f, result, base_url)
+
     f.writelines(format_issue(issue, base_url) for issue in result.issues)
 
     f.write("\n</details>\n")
@@ -413,7 +415,25 @@ def format_notes(notes: list[Note], base_url: str | None, omitted: int = 0) -> s
     return "".join(lines)
 
 
-def write_crash_details(f: TextIO, result: ProjectResult) -> None:
+def format_analyzer_site(site: AnalyzerSite, project: str, base_url: str | None) -> str:
+    """Returns where in the analyzed code the analyzer crashed, if known."""
+    location = ""
+    if site.file_path and site.line:
+        path = _project_path(site.file_path, project)
+        text = f"{path or site.file_path}:{site.line}"
+        if path and base_url:
+            location = f" at [{text}]({base_url}/{path}#L{site.line})"
+        else:
+            location = f" at `{text}`"
+    function = f" while analyzing `{site.function}`" if site.function else ""
+    if not (function or location):
+        return ""
+    return f"Crashed{function}{location}.\n\n"
+
+
+def write_crash_details(
+    f: TextIO, result: ProjectResult, base_url: str | None = None
+) -> None:
     """Writes the crash banner and a stack dump excerpt per crashing check."""
     total = len(result.crashes)
     count_text = f" ({total} crash(es))" if total else ""
@@ -425,6 +445,9 @@ def write_crash_details(f: TextIO, result: ProjectResult) -> None:
 
     for check, crashes in grouped[:MAX_CRASH_EXAMPLES]:
         f.write(f"**`{check}`** - {len(crashes)} crash(es), first occurrence:\n\n")
+        site = analyzer_site(crashes[0].lines)
+        if site is not None:
+            f.write(format_analyzer_site(site, result.name, base_url))
         f.write("```\n")
         f.writelines(line.rstrip("\n") + "\n" for line in crashes[0].lines)
         f.write("```\n\n")
