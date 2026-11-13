@@ -1,10 +1,18 @@
+import io
 import os
 import sys
 import tempfile
 import unittest
 
 from slim_comment import GITHUB_COMMENT_LIMIT, slim_comment
-from testers.generate_report import RESULTS_MARKER
+from testers.generate_report import (
+    MAX_ANALYZER_NOTES,
+    RESULTS_MARKER,
+    Issue,
+    Note,
+    ProjectResult,
+    write_project_details,
+)
 
 ARTIFACT_URL = "https://github.com/org/repo/actions/runs/1/artifacts/2"
 
@@ -49,12 +57,33 @@ _AI_ANALYSIS = """\
 SMALL_REPORT = _SUMMARY + "\n" + _PROJECT_DETAILS + "\n" + _AI_ANALYSIS
 
 
-def _huge_ai() -> str:
+def _huge_ai(size: int = GITHUB_COMMENT_LIMIT) -> str:
     return (
         "<details>\n<summary><b>AI False-Positive Analysis</b> (click to expand)</summary>\n"
-        + "x" * GITHUB_COMMENT_LIMIT
+        + "x" * size
         + "\n</details>\n"
     )
+
+
+def _noted_details(count: int = 100) -> str:
+    """Renders analyzer warnings whose paths are longer than the shown notes."""
+    issues = []
+    for n in range(count):
+        issue = Issue(
+            f"src/file{n}.cpp", n + 1, 1, "warning", "bad", "clang-analyzer-x"
+        )
+        issue.notes = [
+            Note(f"src/file{n}.cpp", step, f"step {step}", True)
+            for step in range(1, MAX_ANALYZER_NOTES + 3)
+        ]
+        issues.append(issue)
+    f = io.StringIO()
+    write_project_details(
+        f,
+        ProjectResult(name="simbody", warnings_count=count, issues=issues),
+        {"simbody": "https://github.com/simbody/simbody/blob/" + "0" * 40},
+    )
+    return f.getvalue()
 
 
 def _huge_project_details() -> str:
@@ -82,6 +111,8 @@ class TestSlimComment(unittest.TestCase):
             f"[Full per-project details in workflow artifacts]({ARTIFACT_URL})",
             result,
         )
+        # Nothing to say about notes the report never had.
+        self.assertNotIn("notes are omitted", result)
         self.assertLessEqual(len(result), GITHUB_COMMENT_LIMIT)
 
     def test_huge_ai_and_findings_both_stripped(self):
@@ -121,6 +152,44 @@ class TestSlimComment(unittest.TestCase):
         content = "x" * (GITHUB_COMMENT_LIMIT + 1)
         result = slim_comment(content, ARTIFACT_URL)
         self.assertIn(ARTIFACT_URL, result)
+
+
+class TestSlimCommentNotes(unittest.TestCase):
+    """Notes are dropped before the AI analysis and the findings."""
+
+    def test_notes_are_stripped_before_findings(self):
+        details = _noted_details()
+        content = _SUMMARY + "\n" + details
+        assert len(content) > GITHUB_COMMENT_LIMIT
+        result = slim_comment(content, ARTIFACT_URL)
+        self.assertIn("simbody Details (100 warnings", result)
+        self.assertIn("src/file99.cpp:100", result)
+        self.assertIn("bad `[clang-analyzer-x]`", result)
+        self.assertNotIn("Notes:", result)
+        self.assertNotIn("step 1", result)
+        self.assertNotIn("earlier notes omitted", result)
+        self.assertIn("_Diagnostic notes are omitted", result)
+        self.assertIn(ARTIFACT_URL, result)
+        self.assertEqual(result.count("<details>"), result.count("</details>"))
+        self.assertLessEqual(len(result), GITHUB_COMMENT_LIMIT)
+
+    def test_notes_are_stripped_before_ai_analysis(self):
+        content = _SUMMARY + "\n" + _noted_details() + "\n" + _AI_ANALYSIS
+        assert len(content) > GITHUB_COMMENT_LIMIT
+        result = slim_comment(content, ARTIFACT_URL)
+        self.assertIn("AI False-Positive Analysis", result)
+        self.assertIn("simbody Details", result)
+        self.assertNotIn("Notes:", result)
+        self.assertLessEqual(len(result), GITHUB_COMMENT_LIMIT)
+
+    def test_notes_and_ai_analysis_both_stripped(self):
+        # Stripping the notes alone is not enough.
+        content = _SUMMARY + "\n" + _noted_details() + "\n" + _huge_ai(50_000)
+        result = slim_comment(content, ARTIFACT_URL)
+        self.assertNotIn("AI False-Positive Analysis", result)
+        self.assertNotIn("Notes:", result)
+        self.assertIn("simbody Details", result)
+        self.assertLessEqual(len(result), GITHUB_COMMENT_LIMIT)
 
 
 class TestSlimCommentPrefix(unittest.TestCase):
