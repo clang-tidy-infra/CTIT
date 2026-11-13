@@ -489,6 +489,21 @@ class TestAnalyzerNotes(unittest.TestCase):
         self.assertNotIn("omitted", output)
         self.assertIn("1. `a.cpp:1` step 1\n", output)
 
+    def test_macro_expansions_are_dropped_from_analyzer_paths(self):
+        issue = Issue("a.cpp", 1, 1, "warning", "msg", "clang-analyzer-x")
+        issue.notes = [
+            Note("a.cpp", 1, "step 1", True),
+            Note("a.h", 2, "expanded from macro 'M'", True),
+            Note("a.h", 3, "expanded from here", True),
+            Note("a.cpp", 4, "step 2", True),
+        ]
+        f = io.StringIO()
+        write_project_details(f, ProjectResult(name="p", issues=[issue]), {})
+        output = f.getvalue()
+        self.assertNotIn("expanded from", output)
+        self.assertNotIn("omitted", output)
+        self.assertIn("2. `a.cpp:4` step 2\n", output)
+
 
 class TestWriteProjectDetails(unittest.TestCase):
     def test_no_issues_no_crash_writes_nothing(self):
