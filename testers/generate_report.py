@@ -416,10 +416,10 @@ def format_notes(notes: list[Note], base_url: str | None, omitted: int = 0) -> s
 
 
 def write_crash_details(f: TextIO, result: ProjectResult) -> None:
-    """Writes the crash banner and a stack dump excerpt per crashing check."""
-    total = len(result.crashes)
-    count_text = f" ({total} crash(es))" if total else ""
-    f.write(f"🚨 **CRASH DETECTED** in this project!{count_text}\n\n")
+    """Writes a stack dump excerpt per crashing check."""
+    if not result.crashes:
+        f.write("_Crashed, but the log has no stack dump._\n\n")
+        return
 
     grouped = sorted(
         group_by_check(result.crashes).items(), key=lambda item: -len(item[1])

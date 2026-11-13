@@ -345,7 +345,7 @@ jobs:
         run: |
           if [ -f report.md ]; then
             {
-              printf '\n<details>\n<summary><b>AI False-Positive Analysis</b> (click to expand)</summary>\n\n'
+              printf '\n<details>\n<summary><b>AI False-Positive Analysis</b></summary>\n\n'
               cat report.md
               printf '\n</details>\n'
             } >> issue.md

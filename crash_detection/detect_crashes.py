@@ -142,7 +142,7 @@ def write_summary(crashes: dict[str, _CheckCrashes], output: str) -> None:
         lines.append(f"| `{check}` | {info.count} |\n")
     lines.append("\n")
 
-    lines.append("<details>\n<summary>Examples (click to expand)</summary>\n\n")
+    lines.append("<details>\n<summary>Examples</summary>\n\n")
     for check, info in sorted(crashes.items()):
         ex = _best_example(info.examples)
         lines.append(f"### `{check}` ({ex.project})\n```\n")

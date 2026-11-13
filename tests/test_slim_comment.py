@@ -42,7 +42,7 @@ bad usage `[misc-use-braced-initialization]`
 
 _AI_ANALYSIS = """\
 <details>
-<summary><b>AI False-Positive Analysis</b> (click to expand)</summary>
+<summary><b>AI False-Positive Analysis</b></summary>
 
 | # | Project | Location | Check | Verdict | Rationale |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -59,7 +59,7 @@ SMALL_REPORT = _SUMMARY + "\n" + _PROJECT_DETAILS + "\n" + _AI_ANALYSIS
 
 def _huge_ai(size: int = GITHUB_COMMENT_LIMIT) -> str:
     return (
-        "<details>\n<summary><b>AI False-Positive Analysis</b> (click to expand)</summary>\n"
+        "<details>\n<summary><b>AI False-Positive Analysis</b></summary>\n"
         + "x" * size
         + "\n</details>\n"
     )
