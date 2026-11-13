@@ -21,6 +21,7 @@ MAX_CRASH_EXAMPLES = 3
 RESULTS_MARKER = "<!-- ctit-results -->"
 MAX_DIFF_LIST_CHARS = 25_000
 MAX_ANALYZER_NOTES = 5
+_MACRO_BACKTRACE = ("expanded from macro '", "expanded from here")
 
 
 @dataclass
@@ -279,6 +280,7 @@ def format_issue(issue: Issue, base_url: str | None, project: str | None = None)
     notes: list[Note] = issue.notes
     omitted = 0
     if issue.check_name.startswith("clang-analyzer-"):
+        notes = [n for n in notes if not n.message.startswith(_MACRO_BACKTRACE)]
         omitted = max(0, len(notes) - MAX_ANALYZER_NOTES)
         notes = notes[omitted:]
     return text + format_notes(notes, base_url, omitted)
