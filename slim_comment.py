@@ -16,7 +16,9 @@ from testers.generate_report import RESULTS_MARKER
 
 GITHUB_COMMENT_LIMIT = 65536
 _AI_MARKER = "AI False-Positive Analysis"
-_NOTES_PATTERN = re.compile(r"^Notes:\n(?:_[^\n]*_\n\n)?(?:\d+\. [^\n]*\n)+", re.M)
+_NOTES_PATTERN = re.compile(
+    r"^Notes:\n(?:_[^\n]*_\n\n)?(?:\d+\. [^\n]*\n)+", re.MULTILINE
+)
 
 
 def _find_details_blocks(text: str) -> list[tuple[int, int]]:
