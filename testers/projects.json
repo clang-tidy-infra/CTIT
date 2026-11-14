@@ -254,6 +254,62 @@
       ],
       "build_targets": ["test_capnp"],
       "file_regex": "(?!build/).*"
+    },
+    "hidapi": {
+      "url": "https://github.com/libusb/hidapi.git",
+      "commit": "d6b2a974608dec3b76fb1e36c189f22b9cf3650c",
+      "cmake_flags": [
+        "-DHIDAPI_WITH_LIBUSB=OFF",
+        "-DHIDAPI_BUILD_HIDTEST=ON",
+        "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"
+      ]
+    },
+    "open62541": {
+      "url": "https://github.com/open62541/open62541.git",
+      "commit": "93c3bdfc9ea4718b503c6cbf57876237addd0f2c",
+      "cmake_flags": [
+        "-DUA_BUILD_EXAMPLES=ON",
+        "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"
+      ],
+      "build_targets": [
+        "open62541-code-generation",
+        "open62541-generator-ns-example",
+        "open62541-generator-ids_example"
+      ],
+      "file_regex": "(?!build/|deps/).*"
+    },
+    "z3": {
+      "url": "https://github.com/Z3Prover/z3.git",
+      "commit": "145c0c51570a357cc558ce898ce77573ba9d4fbf",
+      "cmake_flags": ["-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"],
+      "build_targets": [
+        "src/api/api_log_macros.h",
+        "src/ast/pattern/database.h"
+      ],
+      "file_regex": "(?!build/).*"
+    },
+    "flatbuffers": {
+      "url": "https://github.com/google/flatbuffers.git",
+      "commit": "03fffb25e2d777462b719cb4964249c30b19d58f",
+      "cmake_flags": ["-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"],
+      "build_targets": ["flattests"]
+    },
+    "libzmq": {
+      "url": "https://github.com/zeromq/libzmq.git",
+      "commit": "46493370217ac135246617fa2f6ac819d8b61bfc",
+      "cmake_flags": [
+        "-DCMAKE_POLICY_VERSION_MINIMUM=3.5",
+        "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"
+      ],
+      "file_regex": "(?!external/).*"
+    },
+    "unicorn": {
+      "url": "https://github.com/unicorn-engine/unicorn.git",
+      "commit": "8028ec436f2d9376525352dd38ed9ed6b9f6be10",
+      "cmake_flags": [
+        "-DUNICORN_ARCH=x86;arm;aarch64",
+        "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"
+      ]
     }
   }
 }
