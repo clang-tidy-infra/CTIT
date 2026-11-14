@@ -39,7 +39,7 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
-      - name: Find pull requests adding new clang-tidy checks
+      - name: Find pull requests adding new clang-tidy checks or analyzer checkers
         env:
           GITHUB_TOKEN: ${{ github.token }}
           INCLUDE_DRAFTS: ${{ inputs.include_drafts && 'true' || 'false' }}

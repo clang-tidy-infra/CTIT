@@ -1,11 +1,20 @@
+import contextlib
+import io
 import unittest
 
 from pr_watcher.find_new_check_prs import (
+    SEARCH_FILTERS,
     added_check_classes,
     added_patch_blocks,
     check_language,
+    collect_targets,
     new_check_names,
     search_recent_prs,
+)
+from tests.test_analyzer_checkers import (
+    FSETPOS_DOCS_PATCH,
+    FSETPOS_TD_PATCH,
+    pull_files,
 )
 
 TIDY_ROOT = "clang-tools-extra/clang-tidy"
@@ -221,13 +230,15 @@ class TestSearchRecentPrs(unittest.TestCase):
                     {"number": 1, "updated_at": "2026-09-13T00:00:00Z", "draft": False},
                     {"number": 2, "updated_at": "2026-09-13T10:00:00Z", "draft": False},
                 ],
+                [],
+                [],
             ]
         )
         prs = search_recent_prs(
             client, "llvm/llvm-project", "2026-09-12T00:00:00Z", False
         )
         self.assertEqual([pull["number"] for pull in prs], [2, 1])
-        self.assertEqual(len(client.queries), 2)
+        self.assertEqual(len(client.queries), len(SEARCH_FILTERS))
         for query in client.queries:
             self.assertIn("repo:llvm/llvm-project is:pr is:open", query)
             self.assertIn("updated:>=2026-09-12T00:00:00Z", query)
@@ -236,12 +247,64 @@ class TestSearchRecentPrs(unittest.TestCase):
         pages = [
             [{"number": 3, "updated_at": "2026-09-13T00:00:00Z", "draft": True}],
             [],
+            [],
+            [],
         ]
         self.assertEqual(
             search_recent_prs(FakeSearchClient(pages), "r", "since", False), []
         )
         self.assertEqual(
             len(search_recent_prs(FakeSearchClient(list(pages)), "r", "since", True)), 1
+        )
+
+
+class FakePullClient:
+    """Serves one search hit per PR, its files and its head revision."""
+
+    def __init__(self, files_by_pr):
+        self.files_by_pr = files_by_pr
+        self.gets = []
+
+    def paginate(self, path, params=None, items_key=None):
+        if path == "search/issues":
+            return [
+                {"number": number, "title": f"PR {number}", "updated_at": "now"}
+                for number in self.files_by_pr
+            ]
+        number = int(path.split("/")[-2])
+        return self.files_by_pr[number]
+
+    def get(self, path, params=None):
+        self.gets.append(path)
+        return {"head": {"sha": f"sha{path.split('/')[-1]}"}}
+
+
+class TestCollectTargets(unittest.TestCase):
+    def _collect(self, client):
+        with contextlib.redirect_stdout(io.StringIO()) as output:
+            targets = collect_targets(client, "llvm/llvm-project", "since", False)
+        return targets, output.getvalue()
+
+    def test_adds_analyzer_checker_target(self):
+        client = FakePullClient(
+            {234672: pull_files(FSETPOS_TD_PATCH, FSETPOS_DOCS_PATCH)}
+        )
+        targets, _ = self._collect(client)
+        self.assertEqual(
+            [(t.check_name, t.language, t.head_sha) for t in targets],
+            [("clang-analyzer-unix.fsetpos", "c", "sha234672")],
+        )
+
+    def test_logs_skipped_analyzer_checker(self):
+        td_patch = '@@ -1 +1 @@\n+def NoDeleteChecker : Checker<"NoDeleteChecker">,\n'
+        docs_patch = "@@ -1 +1 @@\n+#### alpha.webkit.NoDeleteChecker\n"
+        client = FakePullClient({177839: pull_files(td_patch, docs_patch)})
+        targets, output = self._collect(client)
+        self.assertEqual(targets, [])
+        self.assertEqual(client.gets, [])
+        self.assertIn(
+            "skipping alpha.webkit.NoDeleteChecker: the corpus has no webkit code",
+            output,
         )
 
 
