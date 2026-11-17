@@ -25,8 +25,8 @@ def clone_project(name: str, url: str, commit: str, dest_dir: str) -> None:
     )
 
 
-def clone_projects(work_dir: str, config_path: str) -> None:
-    projects = load_projects(config_path)
+def clone_projects(work_dir: str, config_path: str, extended: bool = False) -> None:
+    projects = load_projects(config_path, extended)
     os.makedirs(work_dir, exist_ok=True)
 
     for project in projects:

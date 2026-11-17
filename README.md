@@ -40,6 +40,7 @@ or reviewer to comment `/redo` on it. Their comment starts the run.
 [OPTION_NAME: VALUE]
 [OPTION_NAME: VALUE]
 [/baseline]
+[/extended]
 ```
 
 | Part                 | Required | Description                                                                                                                                         |
@@ -48,6 +49,7 @@ or reviewer to comment `/redo` on it. Their comment starts the run.
 | `CHECK_NAME`         | Yes      | The clang-tidy check to run, for example `bugprone-argument-comment`. Glob patterns such as `bugprone-*` also work.                                 |
 | `OPTION_NAME: VALUE` | No       | Check options, one per line. CTIT adds the `CHECK_NAME.` prefix for you, so write `VariableCase`, not `readability-identifier-naming.VariableCase`. |
 | `/baseline`          | No       | Also run the check on unpatched LLVM `main` and list the diagnostics the PR adds or removes. Only works with a `PR_URL`.                            |
+| `/extended`          | No       | Also run the check on the [extended test projects](docs/test-projects.md#core-and-extended-projects). The run takes much longer.                    |
 
 ### Examples
 
@@ -70,6 +72,13 @@ Compare a pull request against the current behavior of the check on `main`:
 ```text
 https://github.com/llvm/llvm-project/pull/123456 readability-identifier-naming
 /baseline
+```
+
+Run a pull request on the extended projects as well:
+
+```text
+https://github.com/llvm/llvm-project/pull/123456 clang-diagnostic-lifetime-safety*
+/extended
 ```
 
 Test a check that already exists upstream, with no patch:
@@ -117,6 +126,7 @@ these inputs:
 | `check_name`       | The check to run.                                        |
 | `extra_config`     | One check option, for example `VariableCase: camelBack`. |
 | `compare_baseline` | Also run unpatched LLVM, like `/baseline`.               |
+| `extended`         | Also run the extended projects, like `/extended`.        |
 | `skip_ai_analysis` | Skip the AI false-positive analysis step.                |
 
 ## Acknowledgements

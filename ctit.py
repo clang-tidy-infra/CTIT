@@ -36,6 +36,11 @@ def main(argv: list[str] | None = None) -> None:
         default=CONFIG_FILE,
         help="Path to config file (default: bundled projects.json)",
     )
+    clone_parser.add_argument(
+        "--extended",
+        action="store_true",
+        help="Also include the projects marked extended in the config file",
+    )
 
     configure_parser = subparsers.add_parser(
         "configure",
@@ -50,6 +55,11 @@ def main(argv: list[str] | None = None) -> None:
         "--config",
         default=CONFIG_FILE,
         help="Path to config file (default: bundled projects.json)",
+    )
+    configure_parser.add_argument(
+        "--extended",
+        action="store_true",
+        help="Also include the projects marked extended in the config file",
     )
 
     analyze_parser = subparsers.add_parser(
@@ -102,6 +112,11 @@ def main(argv: list[str] | None = None) -> None:
         default=False,
         help="Enable per-check timing profiles (appended to logs)",
     )
+    analyze_parser.add_argument(
+        "--extended",
+        action="store_true",
+        help="Also include the projects marked extended in the config file",
+    )
 
     report_parser = subparsers.add_parser(
         "report",
@@ -143,9 +158,13 @@ def main(argv: list[str] | None = None) -> None:
         parser.print_usage(sys.stderr)
         sys.exit(1)
     elif args.command == "clone":
-        clone_projects(work_dir=args.work_dir, config_path=args.config)
+        clone_projects(
+            work_dir=args.work_dir, config_path=args.config, extended=args.extended
+        )
     elif args.command == "configure":
-        configure(work_dir=args.work_dir, config_path=args.config)
+        configure(
+            work_dir=args.work_dir, config_path=args.config, extended=args.extended
+        )
     elif args.command == "analyze":
         analyze(
             check_name=args.check_name,
@@ -157,6 +176,7 @@ def main(argv: list[str] | None = None) -> None:
             config_path=args.config,
             skip_headers=args.skip_headers,
             profile=args.enable_check_profile,
+            extended=args.extended,
         )
     elif args.command == "report":
         generate_report(

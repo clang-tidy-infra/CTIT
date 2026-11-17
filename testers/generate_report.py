@@ -530,7 +530,7 @@ def _load_results(log_dir: str) -> tuple[list[ProjectResult], dict[str, str]]:
         sys.exit(0)
 
     try:
-        projects = load_projects()
+        projects = load_projects(extended=True)
         project_urls = {p.name: p.browse_url for p in projects}
     except (OSError, KeyError):
         project_urls = {}

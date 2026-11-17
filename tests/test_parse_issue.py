@@ -198,6 +198,19 @@ class TestParseIssue(unittest.TestCase):
         result = parse_body("check\n/baseline")
         self.assertFalse(result.compare_baseline)
 
+    def test_extended_opt_in(self):
+        self.assertFalse(parse_body("https://example.com/pr check").extended)
+        result = parse_body("https://example.com/pr check\n/baseline\n /extended ")
+        self.assertTrue(result.extended)
+        self.assertTrue(result.compare_baseline)
+
+    def test_extended_without_pr_link(self):
+        self.assertTrue(parse_body("check\n/extended").extended)
+
+    def test_extended_requires_standalone_directive(self):
+        self.assertFalse(parse_body("check /extended").extended)
+        self.assertFalse(parse_body("check\nOption: /extended").extended)
+
     def test_empty_body(self):
         with self.assertRaises(ValueError):
             parse_body("")

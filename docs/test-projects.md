@@ -18,6 +18,15 @@ CTIT runs each check on these projects, each pinned to a fixed commit:
 | yaml-cpp   | [jbeder/yaml-cpp](https://github.com/jbeder/yaml-cpp)     |
 | Assimp     | [assimp/assimp](https://github.com/assimp/assimp)         |
 
+## Core and extended projects
+
+Every run analyzes the core projects. A project marked `"extended": true` in
+`projects.json` runs only when the request asks for it with `/extended` (or the
+`extended` workflow input, or `ctit clone`, `ctit configure`, and `ctit analyze`
+with `--extended` locally). Extended runs take much longer, so use them for
+checks and diagnostics where wider coverage matters, such as new Clang
+diagnostics.
+
 ## Add a project
 
 Projects are defined in [`testers/projects.json`](../testers/projects.json).
@@ -30,7 +39,8 @@ Each entry looks like this:
   "cmake_flags": ["-DBUILD_TESTING=OFF", "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"],
   "build_targets": ["generated_headers"],
   "cmake_source_subdir": "build/cmake",
-  "file_regex": "(?!third_party/).*"
+  "file_regex": "(?!third_party/).*",
+  "extended": true
 }
 ```
 
@@ -42,6 +52,7 @@ Each entry looks like this:
 | `build_targets`       | No       | Ninja targets to build before analysis, for projects that generate headers or sources.                                              |
 | `cmake_source_subdir` | No       | Subdirectory containing the top-level `CMakeLists.txt`.                                                                             |
 | `file_regex`          | No       | Regular expression, relative to the project root, selecting which files to analyze. Use it to skip vendored or generated code.      |
+| `extended`            | No       | Run the project only in extended runs. Defaults to `false`.                                                                         |
 
 To try the new project before opening a pull request, run it locally as
 described in [Run CTIT locally](local-usage.md).

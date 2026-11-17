@@ -278,10 +278,11 @@ def configure_project(
 def configure(
     work_dir: str = PROJECTS_DIR,
     config_path: str = CONFIG_FILE,
+    extended: bool = False,
 ) -> None:
     """Configure all projects (cmake + build targets)."""
     check_clang_compiler()
-    projects = load_projects(config_path)
+    projects = load_projects(config_path, extended)
     configs = get_analysis_configs(config_path)
 
     for project in projects:
@@ -341,6 +342,7 @@ def analyze(
     config_path: str = CONFIG_FILE,
     skip_headers: bool = False,
     profile: bool = False,
+    extended: bool = False,
 ) -> None:
     """Run clang-tidy analysis on all configured projects."""
     if not shutil.which(clang_tidy_bin) and not os.path.isfile(clang_tidy_bin):
@@ -366,7 +368,7 @@ def analyze(
         )
         sys.exit(1)
 
-    projects = load_projects(config_path)
+    projects = load_projects(config_path, extended)
     configs = get_analysis_configs(config_path)
     os.makedirs(log_dir, exist_ok=True)
 

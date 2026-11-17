@@ -20,7 +20,7 @@ from testers.analyze import (
     run_clang_tidy,
     get_analysis_configs,
 )
-from testers.config import Project
+from testers.config import CONFIG_FILE, Project
 
 
 class TestCheckClangCompiler(unittest.TestCase):
@@ -540,6 +540,26 @@ class TestAnalyze(unittest.TestCase):
 
             self.assertEqual(mock_analyze.call_count, 2)
             self.assertTrue(os.path.isdir(log_dir))
+
+    @patch("testers.analyze.analyze_project")
+    @patch("testers.analyze.load_projects", return_value=[])
+    def test_loads_extended_projects_on_request(self, mock_load, mock_analyze):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            ct_bin = os.path.join(tmp_dir, "clang-tidy")
+            script = os.path.join(tmp_dir, "run-clang-tidy.py")
+            for path in (ct_bin, script):
+                with open(path, "w") as f:
+                    f.write("")
+
+            for extended in (False, True):
+                analyze(
+                    check_name="check",
+                    clang_tidy_bin=ct_bin,
+                    run_tidy_script=script,
+                    log_dir=os.path.join(tmp_dir, "logs"),
+                    extended=extended,
+                )
+                mock_load.assert_called_with(CONFIG_FILE, extended)
 
     def _analyzed(self, check_name):
         with (

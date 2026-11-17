@@ -57,6 +57,32 @@ class TestLoadProjects(unittest.TestCase):
             names = {p.name for p in projects}
             self.assertEqual(names, {"a", "b"})
 
+    def test_extended_projects_only_on_request(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            config = {
+                "projects": {
+                    "core": {"url": "https://example.com/a.git", "commit": "aaa"},
+                    "opt": {
+                        "url": "https://example.com/b.git",
+                        "commit": "bbb",
+                        "extended": True,
+                    },
+                    "explicit": {
+                        "url": "https://example.com/c.git",
+                        "commit": "ccc",
+                        "extended": False,
+                    },
+                }
+            }
+            config_path = os.path.join(tmp_dir, "projects.json")
+            with open(config_path, "w") as f:
+                json.dump(config, f)
+
+            core = [p.name for p in load_projects(config_path)]
+            self.assertEqual(core, ["core", "explicit"])
+            everything = [p.name for p in load_projects(config_path, extended=True)]
+            self.assertEqual(everything, ["core", "opt", "explicit"])
+
     def test_raises_on_missing_file(self):
         with self.assertRaises(FileNotFoundError):
             load_projects("/nonexistent/projects.json")

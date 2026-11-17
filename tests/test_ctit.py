@@ -31,8 +31,13 @@ class TestCtitCli(unittest.TestCase):
     def test_clone_calls_clone_projects(self, mock_clone):
         main(["clone", "--work-dir", "/tmp/out", "--config", "custom.json"])
         mock_clone.assert_called_once_with(
-            work_dir="/tmp/out", config_path="custom.json"
+            work_dir="/tmp/out", config_path="custom.json", extended=False
         )
+
+    @patch("ctit.clone_projects")
+    def test_clone_extended(self, mock_clone):
+        main(["clone", "--extended"])
+        self.assertTrue(mock_clone.call_args.kwargs["extended"])
 
     def test_configure_help(self):
         with self.assertRaises(SystemExit) as ctx:
@@ -43,15 +48,20 @@ class TestCtitCli(unittest.TestCase):
     def test_configure_calls_configure(self, mock_configure):
         main(["configure"])
         mock_configure.assert_called_once_with(
-            work_dir=PROJECTS_DIR, config_path=CONFIG_FILE
+            work_dir=PROJECTS_DIR, config_path=CONFIG_FILE, extended=False
         )
 
     @patch("ctit.configure")
     def test_configure_with_args(self, mock_configure):
         main(["configure", "--work-dir", "/tmp/projects", "--config", "custom.json"])
         mock_configure.assert_called_once_with(
-            work_dir="/tmp/projects", config_path="custom.json"
+            work_dir="/tmp/projects", config_path="custom.json", extended=False
         )
+
+    @patch("ctit.configure")
+    def test_configure_extended(self, mock_configure):
+        main(["configure", "--extended"])
+        self.assertTrue(mock_configure.call_args.kwargs["extended"])
 
     @patch("ctit.analyze")
     def test_analyze_calls_analyze(self, mock_analyze):
@@ -66,6 +76,7 @@ class TestCtitCli(unittest.TestCase):
             config_path=CONFIG_FILE,
             skip_headers=False,
             profile=False,
+            extended=False,
         )
 
     @patch("ctit.analyze")
@@ -89,6 +100,7 @@ class TestCtitCli(unittest.TestCase):
             config_path=CONFIG_FILE,
             skip_headers=False,
             profile=False,
+            extended=False,
         )
 
     @patch("ctit.analyze")
@@ -114,7 +126,13 @@ class TestCtitCli(unittest.TestCase):
             config_path=CONFIG_FILE,
             skip_headers=False,
             profile=False,
+            extended=False,
         )
+
+    @patch("ctit.analyze")
+    def test_analyze_extended(self, mock_analyze):
+        main(["analyze", "--check-name", "bugprone-*", "--extended"])
+        self.assertTrue(mock_analyze.call_args.kwargs["extended"])
 
     @patch("ctit.generate_report")
     def test_report_calls_generate_report(self, mock_report):

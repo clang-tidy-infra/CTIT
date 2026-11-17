@@ -23,11 +23,15 @@ class Project:
         return f"{base_url}/blob/{ref}"
 
 
-def load_projects(config_path: str = CONFIG_FILE) -> list[Project]:
+def load_projects(
+    config_path: str = CONFIG_FILE, extended: bool = False
+) -> list[Project]:
+    """Load the core projects, and with ``extended`` also those marked extended."""
     with open(config_path) as f:
         config = json.load(f)
 
     return [
         Project(name=name, url=proj["url"], commit=proj["commit"])
         for name, proj in config["projects"].items()
+        if extended or not proj.get("extended", False)
     ]

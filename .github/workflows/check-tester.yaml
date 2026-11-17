@@ -20,6 +20,10 @@ on:
         description: 'Compare against the unpatched LLVM submodule'
         type: boolean
         default: false
+      extended:
+        description: 'Also run on the extended test projects'
+        type: boolean
+        default: false
   issues:
     types: labeled
   issue_comment:
@@ -115,7 +119,9 @@ jobs:
     container: 
       image: ghcr.io/clang-tidy-infra/ctit-runner:latest # zizmor: ignore[unpinned-images]
       options: --user root
-    timeout-minutes: 180
+    # Extended runs analyze many more projects. The issue body check is looser
+    # than parse_issue.py, which only affects the time limit.
+    timeout-minutes: ${{ (inputs.extended || contains(github.event.issue.body, '/extended')) && 600 || 180 }}
 
     permissions:
       issues: write
@@ -166,15 +172,6 @@ jobs:
           git -C llvm-project clean -fdx
           echo "LLVM_REVISION=$(git -C llvm-project rev-parse HEAD)" >> "$GITHUB_ENV"
 
-      - name: Restore test-projects cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: test_projects
-          key: test-projects-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('testers/projects.json') }}
-
-      - name: Clone test projects
-        run: ./ctit.py clone --work-dir test_projects
-
       - name: Extract analysis inputs from issue body
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
@@ -184,6 +181,9 @@ jobs:
               if [ "${{ inputs.compare_baseline }}" = true ]; then
                 echo /baseline
               fi
+              if [ "${{ inputs.extended }}" = true ]; then
+                echo /extended
+              fi
             } | python3 parse_issue.py $GITHUB_ENV
           else
             echo "${{ github.event.issue.body }}" | python3 parse_issue.py $GITHUB_ENV
@@ -192,6 +192,18 @@ jobs:
           echo "PR_LINK: $PR_LINK"
           echo "CHECK_NAME: $CHECK_NAME"
           echo "TIDY_CONFIG: $TIDY_CONFIG"
+          echo "EXTENDED: $EXTENDED"
+
+      - name: Restore test-projects cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: test_projects
+          # An extended run starts from the core cache and adds its own projects.
+          key: test-projects-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('testers/projects.json') }}${{ env.EXTENDED == 'true' && '-extended' || '' }}
+          restore-keys: test-projects-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('testers/projects.json') }}
+
+      - name: Clone test projects
+        run: ./ctit.py clone --work-dir test_projects ${{ env.EXTENDED == 'true' && '--extended' || '' }}
 
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
@@ -205,7 +217,7 @@ jobs:
         run: bash build.sh
 
       - name: Configure test projects
-        run: ./ctit.py configure
+        run: ./ctit.py configure ${{ env.EXTENDED == 'true' && '--extended' || '' }}
 
       - name: Save analysis runner
         run: |
@@ -221,7 +233,8 @@ jobs:
             ./ctit.py analyze --check-name "$CHECK_NAME" \
               --clang-tidy-binary llvm-project/build/bin/clang-tidy \
               --run-tidy-script logs/run-clang-tidy.py \
-              --log-dir logs/baseline --tidy-config "$TIDY_CONFIG"
+              --log-dir logs/baseline --tidy-config "$TIDY_CONFIG" \
+              ${{ env.EXTENDED == 'true' && '--extended' || '' }}
             echo "HAS_BASELINE=true" >> "$GITHUB_ENV"
           fi
 
@@ -256,6 +269,7 @@ jobs:
           --clang-tidy-binary llvm-project/build/bin/clang-tidy
           --run-tidy-script logs/run-clang-tidy.py
           --enable-check-profile
+          ${{ env.EXTENDED == 'true' && '--extended' || '' }}
           ${{ env.TIDY_CONFIG && format('--tidy-config "{0}"', env.TIDY_CONFIG) || '' }}
 
       - name: Generate warnings report

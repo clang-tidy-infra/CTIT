@@ -76,6 +76,30 @@ class TestCloneProjects(unittest.TestCase):
             )
 
     @patch("testers.clone_projects.clone_project")
+    def test_clones_extended_projects_on_request(self, mock_clone):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            config = {
+                "projects": {
+                    "a": {"url": "https://example.com/a.git", "commit": "aaa"},
+                    "b": {
+                        "url": "https://example.com/b.git",
+                        "commit": "bbb",
+                        "extended": True,
+                    },
+                }
+            }
+            config_path = os.path.join(tmp_dir, "projects.json")
+            with open(config_path, "w") as f:
+                json.dump(config, f)
+
+            clone_projects(tmp_dir, config_path)
+            self.assertEqual([c.args[0] for c in mock_clone.call_args_list], ["a"])
+
+            mock_clone.reset_mock()
+            clone_projects(tmp_dir, config_path, extended=True)
+            self.assertEqual([c.args[0] for c in mock_clone.call_args_list], ["a", "b"])
+
+    @patch("testers.clone_projects.clone_project")
     def test_creates_work_dir(self, mock_clone):
         with tempfile.TemporaryDirectory() as tmp_dir:
             config = {"projects": {}}

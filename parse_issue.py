@@ -14,6 +14,7 @@ class ParseResult:
     tidy_config: str
     compare_baseline: bool = False
     static_analyzer: bool = False
+    extended: bool = False
 
 
 def _analyzer_option(check_name: str, key: str, value: str) -> tuple[str, str]:
@@ -102,6 +103,7 @@ def parse_body(body: str) -> ParseResult:
             )
         ),
         static_analyzer=needs_static_analyzer(check_name),
+        extended="/extended" in lines[1:],
     )
 
 
@@ -124,6 +126,7 @@ def main() -> None:
             f.write(
                 f"CTIT_STATIC_ANALYZER={'ON' if result.static_analyzer else 'OFF'}\n"
             )
+            f.write(f"EXTENDED={str(result.extended).lower()}\n")
     except OSError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
