@@ -21,6 +21,10 @@ def _profile(rows: dict[str, float]) -> str:
     return "".join(lines)
 
 
+def _warning(project: str, line: int, checks: str, severity: str = "warning") -> str:
+    return f"/w/test_projects/{project}/a.cpp:{line}:1: {severity}: bad [{checks}]\n"
+
+
 def _write_log(log_dir: str, project: str, content: str) -> None:
     with open(os.path.join(log_dir, f"{project}.log"), "w") as stream:
         stream.write(content)
@@ -47,13 +51,16 @@ class TestTimingsResult(unittest.TestCase):
                 tmp_dir,
                 "one",
                 "warning before the profile\n"
+                + _warning("one", 1, "check-a")
+                + _warning("one", 2, "check-a,check-b")
                 + _profile({"check-a": 2.5, "check-b": 1.0})
                 + "\nCTIT analysis elapsed seconds: 12.345678\n",
             )
             _write_log(
                 tmp_dir,
                 "two",
-                _profile({"check-a": 0.25, "check-c": 0.5})
+                _warning("two", 1, "check-c")
+                + _profile({"check-a": 0.25, "check-c": 0.5})
                 + "\nCTIT analysis elapsed seconds: 3.000000\n",
             )
             _write_log(tmp_dir, "progress", "[ 1/2] Running clang-tidy\n")
@@ -84,8 +91,13 @@ class TestTimingsResult(unittest.TestCase):
                 saved["project_checks"],
                 {"one": [2.5, 1.0, None], "two": [0.25, None, 0.5]},
             )
+            self.assertEqual(
+                saved["project_warnings"],
+                {"one": [2, 1, None], "two": [0, None, 1]},
+            )
             # One line per project, not one per number.
             self.assertIn('"one": [2.5, 1.0, null]', text)
+            self.assertIn('"one": [2, 1, null]', text)
 
     def test_keeps_projects_without_profile(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -98,6 +110,25 @@ class TestTimingsResult(unittest.TestCase):
             self.assertIsNone(timings.projects["crashed"].check_seconds)
             self.assertEqual(timings.checks, {"check-a": 1.0})
             self.assertEqual(timings.project_checks, {"one": [1.0]})
+            self.assertEqual(timings.project_warnings, {"one": [0]})
+
+    def test_counts_warnings_like_the_report(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            _write_log(
+                tmp_dir,
+                "one",
+                _warning("one", 1, "check-a")
+                # The same warning again, as from another translation unit.
+                + _warning("one", 1, "check-a")
+                + _warning("one", 2, "check-a", severity="error")
+                + _warning("one", 3, "clang-diagnostic-unused-variable")
+                + _profile({"check-a": 1.0}),
+            )
+            _write_log(tmp_dir, "crashed", _warning("crashed", 1, "check-a"))
+
+            timings = _create(tmp_dir)
+
+            self.assertEqual(timings.project_warnings, {"one": [1]})
 
     def test_check_times_add_up_to_the_combined_times(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
