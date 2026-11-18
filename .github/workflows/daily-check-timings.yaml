@@ -72,6 +72,40 @@ jobs:
           --skip-headers
           --enable-check-profile
 
+      # The nightly crash detection runs only the checks changed in the last
+      # LLVM update, so this is the only run of every check on every project.
+      - name: Detect crashes
+        id: detect-crashes
+        run: python3 crash_detection/detect_crashes.py --log-dir logs/ --summary-file crash-summary.md
+
+      - name: Report crashes
+        if: steps.detect-crashes.outputs.crashes_found == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          python3 crash_detection/create_crash_issue.py \
+            --repo "$REPO" \
+            --run-id "$RUN_ID" \
+            --summary-file crash-summary.md \
+            --run-name "daily all-checks" \
+            --output-file crash-issue.md
+          # Comment on the open issue, if any, so a crash that is not fixed yet
+          # does not open a new issue every day.
+          TITLE="Daily all-checks crashes"
+          NUMBER=$(gh issue list --repo "$REPO" --state open --author app/github-actions \
+            --search "\"$TITLE\" in:title" --json number,title \
+            --jq "map(select(.title | startswith(\"$TITLE\"))) | .[0].number // empty")
+          if [[ -n "$NUMBER" ]]; then
+            gh issue comment "$NUMBER" --repo "$REPO" --body-file crash-issue.md
+          else
+            gh issue create --repo "$REPO" \
+              --title "$TITLE $(date -u '+%Y-%m-%d')" \
+              --body-file crash-issue.md
+          fi
+
       - name: Parse check timings profile
         run: python3 crash_detection/parse_check_profile.py --log-dir logs/ --output profile-report.md
 
@@ -112,6 +146,7 @@ jobs:
             profile-report-detailed.md
             check-timings-comment.md
             ctit-timings.json
+            crash-summary.md
 
       - name: Checkout public results repository
         if: always() && hashFiles('ctit-timings.json') != '' && vars.CTIT_RESULTS_REPOSITORY != ''

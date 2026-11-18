@@ -55,13 +55,12 @@ def build_body(
     run_id: str,
     summary_file: str,
     profile_file: str | None = None,
+    run_name: str = "nightly crash-detection",
 ) -> str:
     summary = _read_file(summary_file)
     run_url = f"https://github.com/{repo}/actions/runs/{run_id}"
 
-    parts = [
-        f"Crashes detected in nightly crash-detection run.\n\n**Run:** {run_url}\n\n"
-    ]
+    parts = [f"Crashes detected in {run_name} run.\n\n**Run:** {run_url}\n\n"]
 
     parts.append(summary)
 
@@ -91,6 +90,11 @@ def main() -> None:
         default="logs/issue.md",
         help="Optional file to save the issue body to disk",
     )
+    parser.add_argument(
+        "--run-name",
+        default="nightly crash-detection",
+        help="Name of the run in the issue body",
+    )
     args = parser.parse_args()
 
     body = build_body(
@@ -98,6 +102,7 @@ def main() -> None:
         args.run_id,
         args.summary_file,
         args.profile_file,
+        args.run_name,
     )
 
     if args.output_file:
