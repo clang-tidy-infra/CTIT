@@ -19,6 +19,7 @@ from testers.analyze import (
     remove_clang_tidy_configs,
     run_clang_tidy,
     get_analysis_configs,
+    names_compiler_warnings,
 )
 from testers.config import Project
 
@@ -188,11 +189,53 @@ class TestCheckFlags(unittest.TestCase):
                     ],
                 )
 
-    def test_unmappable_diagnostic_globs_are_skipped(self):
-        self.assertEqual(check_flags("clang-diagnostic-*"), [])
-        self.assertEqual(check_flags("clang-diagnostic-*lifetime*"), [])
+    def test_warning_is_enabled_and_kept_a_warning(self):
+        self.assertEqual(
+            check_flags("bugprone-*, clang-diagnostic-unused-variable"),
+            [
+                "-allow-no-checks",
+                "-extra-arg=-Wunused-variable",
+                "-extra-arg=-Wno-error=unused-variable",
+            ],
+        )
+
+    def test_diagnostics_without_an_option_enable_nothing(self):
+        for checks in ("clang-diagnostic-warning", "clang-diagnostic-remark"):
+            with self.subTest(checks=checks):
+                self.assertEqual(check_flags(checks), ["-allow-no-checks"])
+
+    def test_glob_enables_its_prefix_group(self):
+        self.assertEqual(
+            check_flags("clang-diagnostic-unused-*"),
+            [
+                "-allow-no-checks",
+                "-extra-arg=-Wunused",
+                "-extra-arg=-Wno-error=unused",
+            ],
+        )
+
+    def test_unmappable_diagnostic_globs_only_allow_no_checks(self):
+        self.assertEqual(check_flags("clang-diagnostic-*"), ["-allow-no-checks"])
+        self.assertEqual(
+            check_flags("clang-diagnostic-*lifetime*"), ["-allow-no-checks"]
+        )
         self.assertEqual(check_flags("-clang-diagnostic-unused-variable"), [])
         self.assertEqual(check_flags("-clang-diagnostic-lifetime-safety*"), [])
+
+
+class TestNamesCompilerWarnings(unittest.TestCase):
+    def test_names_a_compiler_warning(self):
+        for check_name, expected in (
+            ("clang-diagnostic-unused-variable", True),
+            ("clang-diagnostic-*", True),
+            ("bugprone-*, clang-diagnostic-lifetime-safety*", True),
+            ("clang-diagnostic-error", False),
+            ("bugprone-*,clang-diagnostic-error", False),
+            ("*,-clang-diagnostic-unused-variable", False),
+            ("*", False),
+        ):
+            with self.subTest(check_name=check_name):
+                self.assertEqual(names_compiler_warnings(check_name), expected)
 
 
 class TestNeedsStaticAnalyzer(unittest.TestCase):

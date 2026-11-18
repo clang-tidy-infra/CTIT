@@ -48,6 +48,24 @@ instead (all relative to `llvm-project/`):
 - **Regression examples** - `clang/test/Sema/LifetimeSafety/`. CTIT excludes test
   files when applying PR patches, so these tests may not include the PR's changes.
 
+For any other `clang-diagnostic-<flag>`, the warning is the **Clang compiler
+warning** `-W<flag>`, not a clang-tidy check. Use these paths instead (all
+relative to `llvm-project/`):
+
+- **Docs** - the group's `Documentation` field in
+  `clang/include/clang/Basic/DiagnosticGroups.td`, if it has one. The Clang
+  Diagnostics Reference is generated from these `.td` files and is not in the
+  tree; `clang/docs/UsersManual.md` describes some warnings.
+- **Diagnostic text and groups** - find `"<flag>"` in
+  `clang/include/clang/Basic/DiagnosticGroups.td`, or inline as
+  `InGroup<DiagGroup<"<flag>">>`, then the diagnostics in that group in
+  `clang/include/clang/Basic/Diagnostic*Kinds.td`.
+- **Implementation** - search `clang/lib/` (mostly `Sema/`, also `Lex/`,
+  `Parse/`, `AST/`, and `Analysis/`) for `diag::<diagnostic name>`.
+- **Regression examples** - `clang/test/` (e.g. `Sema/`, `SemaCXX/`, `Lexer/`).
+  CTIT excludes test files when applying PR patches, so these tests may not
+  include the PR's changes.
+
 For `clang-analyzer-<checker>` (e.g. `clang-analyzer-unix.Malloc`), the warning
 comes from the **Clang Static Analyzer** checker `<checker>`, not a clang-tidy
 check. Use these paths instead (all relative to `llvm-project/`):
@@ -103,6 +121,24 @@ Process rows top-to-bottom. For each row:
 
 When all rows are filled, replace the three `TBD` counts in the
 `**Summary**: TBD True Positives, TBD False Positives, TBD Uncertain ...` line.
+
+## Compiler Warning Verdicts
+
+For `clang-diagnostic-<flag>`, CTIT passes `-W<flag>` and `-Wno-error=<flag>`
+after each project's own flags, so the warning fires even in a project that
+disables it. That a project disables or never enables the warning is not
+evidence of an FP. LifetimeSafety warnings follow the next section instead.
+
+Judge the warning against the condition its diagnostic text and documentation
+describe, not against whether the code misbehaves:
+
+- **TP** - the condition holds, even when the code works as intended and the
+  warning is stylistic, e.g. a `-Wshadow` declaration that does shadow another.
+- **FP** - the condition does not hold; the code uses the suppression idiom the
+  warning documents, such as `(void)x;` or extra parentheses; or the condition
+  holds only for one template instantiation or macro expansion while the
+  generic code is correct, e.g. a comparison that is tautological only for one
+  template argument.
 
 ## LifetimeSafety Verdicts
 

@@ -117,6 +117,22 @@ ctit analyze --check-name clang-analyzer-unix.Malloc \
 A key such as `clang-analyzer-unix.Malloc.Optimistic`, with a dot, is silently
 ignored.
 
+## Clang compiler warnings
+
+`clang-diagnostic-<flag>` reports the Clang warning `-W<flag>`. `ctit analyze`
+passes `-W<flag>` and `-Wno-error=<flag>` after each project's own flags, so the
+warning fires even where a project disables it:
+
+```bash
+ctit analyze --check-name clang-diagnostic-unused-but-set-variable \
+  --clang-tidy-binary llvm-project/build/bin/clang-tidy \
+  --run-tidy-script llvm-project/clang-tools-extra/clang-tidy/tool/run-clang-tidy.py
+```
+
+A glob such as `clang-diagnostic-unused-*` turns on only the group its prefix
+names, here `-Wunused`. Warnings outside that group, such as
+`-Wunused-parameter`, are reported only where the project enables them.
+
 ## Command reference
 
 Run `ctit <command> --help` for the full list of options.

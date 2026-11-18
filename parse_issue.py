@@ -4,7 +4,11 @@ import sys
 from dataclasses import dataclass
 from typing import Any
 
-from testers.analyze import ANALYZER_PREFIX, needs_static_analyzer
+from testers.analyze import (
+    ANALYZER_PREFIX,
+    needs_static_analyzer,
+    names_compiler_warnings,
+)
 
 
 @dataclass
@@ -93,14 +97,9 @@ def parse_body(body: str) -> ParseResult:
         pr_link=pr_link,
         check_name=check_name,
         tidy_config=tidy_config,
+        # A Clang PR changes warnings that already fire, so show what changed.
         compare_baseline=bool(pr_link)
-        and (
-            "/baseline" in lines[1:]
-            or any(
-                check.startswith("clang-diagnostic-lifetime-safety")
-                for check in check_name.split(",")
-            )
-        ),
+        and ("/baseline" in lines[1:] or names_compiler_warnings(check_name)),
         static_analyzer=needs_static_analyzer(check_name),
     )
 
