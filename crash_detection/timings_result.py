@@ -2,8 +2,9 @@
 """Build the public JSON record for one daily check timings run.
 
 The record has the wall time of each check per project and summed over all
-projects, as in the tracking issue comment, and the analysis time of each
-project. The results repository stores one record per run under ``timings/``.
+projects, as in the tracking issue comment, the number of warnings of each check
+per project, and the analysis time of each project. The results repository
+stores one record per run under ``timings/``.
 """
 
 from __future__ import annotations
@@ -13,11 +14,13 @@ import datetime
 import json
 import re
 import sys
+from collections import Counter
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from crash_detection.parse_check_profile import combine_profiles, parse_profile
 from crash_detection.post_check_timings import describe_machine
+from testers.generate_report import parse_log_file
 
 OUTPUT_FILE = "ctit-timings.json"
 _ELAPSED_RE: re.Pattern[str] = re.compile(
@@ -52,6 +55,10 @@ class TimingsRun:
     # profile are left out.
     check_names: list[str]
     project_checks: dict[str, list[float | None]]
+    # Number of warnings of each check in each project, stored by column like
+    # project_checks. Warnings of checks without a profile row, such as
+    # clang-diagnostic-*, are left out.
+    project_warnings: dict[str, list[int | None]]
 
 
 def _read_log(path: Path) -> tuple[float | None, float, dict[str, float]]:
@@ -67,6 +74,19 @@ def _read_log(path: Path) -> tuple[float | None, float, dict[str, float]]:
             duration = float(match.group(1))
             break
     return duration, total_wall, checks
+
+
+def _count_warnings(path: Path) -> Counter[str]:
+    """Return {check: number of warnings} of a log.
+
+    clang-tidy prints a warning of aliased checks once, as ``[check-a,check-b]``;
+    it counts for each of them.
+    """
+    counts: Counter[str] = Counter()
+    for issue in parse_log_file(str(path)).issues:
+        if issue.severity == "warning":
+            counts.update(issue.check_name.split(","))
+    return counts
 
 
 def create_timings(
@@ -90,12 +110,14 @@ def create_timings(
 
     projects: dict[str, ProjectTimings] = {}
     profiles: dict[str, tuple[float, dict[str, float]]] = {}
+    warnings: dict[str, Counter[str]] = {}
     for path in sorted(Path(log_dir).glob("*.log")):
         if path.name == "progress.log":
             continue
         duration, total_wall, checks = _read_log(path)
         if checks:
             profiles[path.stem] = (total_wall, checks)
+            warnings[path.stem] = _count_warnings(path)
         projects[path.stem] = ProjectTimings(
             duration_seconds=None if duration is None else round(duration, 2),
             check_seconds=round(total_wall, 2) if checks else None,
@@ -125,21 +147,31 @@ def create_timings(
             ]
             for project, (_, checks) in profiles.items()
         },
+        project_warnings={
+            project: [
+                warnings[project][name] if name in checks else None
+                for name in check_names
+            ]
+            for project, (_, checks) in profiles.items()
+        },
     )
 
 
 def format_timings(timings: TimingsRun) -> str:
     """Return the record as indented JSON, with each project's column of check
-    times on one line instead of one line per number."""
+    times and warnings on one line instead of one line per number."""
     data = asdict(timings)
-    columns: dict[str, list[float | None]] = data["project_checks"]
     # json.dumps cannot indent only some lists, so each column is swapped for a
     # placeholder string that cannot occur in the record, then put back.
-    placeholders = {project: f"\0{project}" for project in columns}
-    data["project_checks"] = placeholders
+    columns: dict[str, list[float | int | None]] = {}
+    for key in ("project_checks", "project_warnings"):
+        for project, column in data[key].items():
+            placeholder = f"\0{key}\0{project}"
+            columns[placeholder] = column
+            data[key][project] = placeholder
     text = json.dumps(data, indent=2, sort_keys=True)
-    for project, placeholder in placeholders.items():
-        text = text.replace(json.dumps(placeholder), json.dumps(columns[project]))
+    for placeholder, column in columns.items():
+        text = text.replace(json.dumps(placeholder), json.dumps(column))
     return text + "\n"
 
 
