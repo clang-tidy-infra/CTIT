@@ -28,14 +28,16 @@ class TestParseIssue(unittest.TestCase):
         result = parse_body("https://example.com/pr check\nOption: /baseline")
         self.assertFalse(result.compare_baseline)
 
-    def test_lifetime_baseline_defaults(self):
+    def test_compiler_warning_baseline_defaults(self):
         for checks, expected in (
             ("clang-diagnostic-lifetime-safety*", True),
             ("clang-diagnostic-lifetime-safety-use-after-scope", True),
             ("clang-diagnostic-lifetime-safety-*suggestions", True),
             ("bugprone-*,clang-diagnostic-lifetime-safety-noescape", True),
             ("bugprone-*,-clang-diagnostic-lifetime-safety*", False),
-            ("clang-diagnostic-unused-variable", False),
+            ("clang-diagnostic-unused-variable", True),
+            ("clang-diagnostic-unused-*", True),
+            ("bugprone-*,clang-diagnostic-error", False),
             ("bugprone-*", False),
         ):
             with self.subTest(checks=checks):

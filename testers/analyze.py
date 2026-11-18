@@ -29,6 +29,8 @@ ANALYSIS_CONFIG_FIELDS = {
 }
 
 ANALYZER_PREFIX = "clang-analyzer-"
+DIAGNOSTIC_PREFIX = "clang-diagnostic-"
+_LEVEL_DIAGNOSTICS = {"error", "warning", "remark", "unknown"}
 
 
 @dataclass
@@ -78,6 +80,14 @@ def needs_static_analyzer(check_name: str) -> bool:
         elif ANALYZER_PREFIX.startswith(literal) or literal.startswith(ANALYZER_PREFIX):
             enabled = True
     return enabled
+
+
+def names_compiler_warnings(check_name: str) -> bool:
+    """Whether the -checks glob names a Clang warning, e.g. clang-diagnostic-shadow."""
+    return any(
+        check.startswith(DIAGNOSTIC_PREFIX) and check != f"{DIAGNOSTIC_PREFIX}error"
+        for check in map(str.strip, check_name.split(","))
+    )
 
 
 def find_run_tidy_script() -> str | None:
@@ -162,26 +172,22 @@ def check_flags(check_name: str) -> list[str]:
     flags: list[str] = []
     for check in check_name.split(","):
         check = check.strip()
-        if check == "clang-diagnostic-error":
-            # Compiler errors need no warning flag; -Werror would promote warnings.
-            flags.append("-allow-no-checks")
+        if not check.startswith(DIAGNOSTIC_PREFIX):
             continue
-        if check.startswith("clang-diagnostic-lifetime-safety"):
+        # clang-tidy does not count compiler diagnostics as enabled checks.
+        flags.append("-allow-no-checks")
+        name = check.removeprefix(DIAGNOSTIC_PREFIX)
+        if name in _LEVEL_DIAGNOSTICS:
+            # These have no warning option; -Werror would promote warnings.
+            continue
+        if name.startswith("lifetime-safety"):
             # Enable the known parent group; -checks retains the output filter.
-            flags += [
-                "-allow-no-checks",
-                "-extra-arg=-Wlifetime-safety-all",
-                "-extra-arg=-Wno-error=lifetime-safety-all",
-            ]
-            continue
-        if check.startswith("clang-diagnostic-"):
-            group = check.removeprefix("clang-diagnostic-").rstrip("*").rstrip("-")
-            if group and "*" not in group:
-                flags += [
-                    "-allow-no-checks",
-                    f"-extra-arg=-W{group}",
-                    f"-extra-arg=-Wno-error={group}",
-                ]
+            group = "lifetime-safety-all"
+        else:
+            group = name.rstrip("*").rstrip("-")
+            if not group or "*" in group:
+                continue
+        flags += [f"-extra-arg=-W{group}", f"-extra-arg=-Wno-error={group}"]
     return list(dict.fromkeys(flags))
 
 
