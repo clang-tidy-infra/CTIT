@@ -39,7 +39,8 @@ Each entry looks like this:
 | `url`                 | Yes      | Git URL to clone.                                                                                                                   |
 | `commit`              | Yes      | Commit to pin. Pinning keeps results comparable between runs.                                                                       |
 | `cmake_flags`         | No       | Extra CMake flags. Existing projects pass `-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON` and turn off tests and examples they do not need. |
-| `build_targets`       | No       | Ninja targets to build before analysis, for projects that generate headers or sources.                                              |
+| `build_targets`       | No       | Extra Ninja targets to build before analysis. Generated headers and sources that the analyzed files need are found and built automatically, so most projects do not need this. |
+| `sparse_checkout`     | No       | Non-cone sparse-checkout patterns. Only matching files are downloaded and checked out, e.g. to skip large test directories.         |
 | `cmake_source_subdir` | No       | Subdirectory containing the top-level `CMakeLists.txt`.                                                                             |
 | `file_regex`          | No       | Regular expression, relative to the project root, selecting which files to analyze. Use it to skip vendored or generated code.      |
 

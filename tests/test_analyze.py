@@ -1,8 +1,10 @@
 import io
+import json
 import os
+import subprocess
 import tempfile
 import unittest
-from contextlib import redirect_stderr
+from contextlib import redirect_stderr, redirect_stdout
 from unittest.mock import MagicMock, patch
 
 from testers.analyze import (
@@ -10,12 +12,15 @@ from testers.analyze import (
     AnalysisConfig,
     analyze,
     analyze_project,
+    analyzed_objects,
     build_project,
     check_clang_compiler,
     check_flags,
+    configure,
     configure_cmake,
     configure_project,
     find_run_tidy_script,
+    prerequisite_targets,
     remove_clang_tidy_configs,
     run_clang_tidy,
     get_analysis_configs,
@@ -403,11 +408,113 @@ class TestRunClangTidy(unittest.TestCase):
             )
 
 
+class TestAnalyzedObjects(unittest.TestCase):
+    def _write_database(self, build_dir: str, entries: list[dict]) -> None:
+        os.makedirs(build_dir, exist_ok=True)
+        with open(os.path.join(build_dir, "compile_commands.json"), "w") as f:
+            json.dump(entries, f)
+
+    def test_selects_files_like_run_clang_tidy(self):
+        with tempfile.TemporaryDirectory() as src:
+            build = os.path.join(src, "build")
+            self._write_database(
+                build,
+                [
+                    {
+                        "directory": build,
+                        "file": f"{src}/clang/lib/a.cpp",
+                        "output": "tools/clang/a.cpp.o",
+                    },
+                    {
+                        "directory": build,
+                        "file": f"{src}/llvm/lib/b.cpp",
+                        "output": f"{build}/lib/b.cpp.o",
+                    },
+                    {
+                        "directory": build,
+                        "file": "../clang/lib/c.cpp",
+                        "output": f"{build}/tools/clang/c.cpp.o",
+                    },
+                ],
+            )
+
+            self.assertEqual(
+                analyzed_objects(build, src, "clang/.*"),
+                ["tools/clang/a.cpp.o", "tools/clang/c.cpp.o"],
+            )
+            self.assertEqual(
+                analyzed_objects(build, src, None),
+                ["lib/b.cpp.o", "tools/clang/a.cpp.o", "tools/clang/c.cpp.o"],
+            )
+
+
+class TestPrerequisiteTargets(unittest.TestCase):
+    TARGETS = (
+        "ninja: Entering directory `/build'\n"
+        "a.o: CXX_COMPILER\n"
+        "b.o: CXX_COMPILER\n"
+        "gen/a.c: CUSTOM_COMMAND\n"
+        "gen/b.h: CUSTOM_COMMAND\n"
+        "gen/unused.h: CUSTOM_COMMAND\n"
+        "cmake_object_order_depends_target_lib: phony\n"
+    )
+    QUERY = (
+        "a.o:\n"
+        "  input: CXX_COMPILER\n"
+        "    gen/a.c\n"
+        "    | gen/b.h\n"
+        "    || cmake_object_order_depends_target_lib\n"
+        "  outputs:\n"
+        "    lib.a\n"
+        "b.o:\n"
+        "  input: CXX_COMPILER\n"
+        "    /src/b.cpp\n"
+        "    || cmake_object_order_depends_target_lib\n"
+        "  validations:\n"
+        "    gen/unused.h\n"
+    )
+
+    @patch("testers.analyze._ninja_tool")
+    def test_returns_generated_inputs_of_objects(self, mock_tool):
+        mock_tool.side_effect = lambda _build, tool, *args: (
+            self.TARGETS if tool == "targets" else self.QUERY
+        )
+        self.assertEqual(
+            prerequisite_targets("/build", ["a.o", "b.o"]),
+            ["cmake_object_order_depends_target_lib", "gen/a.c", "gen/b.h"],
+        )
+        mock_tool.assert_any_call("/build", "query", "a.o", "b.o")
+
+    @patch("testers.analyze._ninja_tool")
+    def test_does_not_build_other_analyzed_objects(self, mock_tool):
+        query = "a.o:\n  input: CXX_COMPILER\n    b.o\n  outputs:\n"
+        mock_tool.side_effect = lambda _build, tool, *args: (
+            self.TARGETS if tool == "targets" else query
+        )
+        self.assertEqual(prerequisite_targets("/build", ["a.o", "b.o"]), [])
+
+    @patch("testers.analyze._ninja_tool")
+    def test_nothing_to_analyze(self, mock_tool):
+        self.assertEqual(prerequisite_targets("/build", []), [])
+        mock_tool.assert_not_called()
+
+    @patch("testers.analyze.NINJA_QUERY_CHUNK", 2)
+    @patch("testers.analyze._ninja_tool", return_value="")
+    def test_queries_in_chunks(self, mock_tool):
+        prerequisite_targets("/build", ["a.o", "b.o", "c.o"])
+        mock_tool.assert_any_call("/build", "query", "a.o", "b.o")
+        mock_tool.assert_any_call("/build", "query", "c.o")
+
+
 class TestConfigureProject(unittest.TestCase):
+    @patch("testers.analyze.prerequisite_targets", return_value=[])
+    @patch("testers.analyze.analyzed_objects", return_value=[])
     @patch("testers.analyze.build_project")
     @patch("testers.analyze.configure_cmake")
     @patch("testers.analyze.remove_clang_tidy_configs")
-    def test_calls_steps_in_order(self, mock_remove, mock_cmake, mock_build):
+    def test_calls_steps_in_order(
+        self, mock_remove, mock_cmake, mock_build, mock_objects, mock_prereqs
+    ):
         project = Project(
             name="cppcheck", url="https://example.com/p.git", commit="abc"
         )
@@ -427,25 +534,93 @@ class TestConfigureProject(unittest.TestCase):
         build_args = mock_build.call_args[0]
         self.assertEqual(build_args[1], [])
 
+    @patch("testers.analyze.prerequisite_targets")
+    @patch("testers.analyze.analyzed_objects")
     @patch("testers.analyze.build_project")
     @patch("testers.analyze.configure_cmake")
     @patch("testers.analyze.remove_clang_tidy_configs")
-    def test_cmake_source_subdir(self, mock_remove, mock_cmake, mock_build):
+    def test_builds_prerequisites_of_analyzed_files(
+        self, mock_remove, mock_cmake, mock_build, mock_objects, mock_prereqs
+    ):
+        mock_objects.return_value = ["tools/clang/a.cpp.o"]
+        mock_prereqs.return_value = ["clang-tablegen-targets", "gen.h"]
         project = Project(
             name="llvm-project", url="https://example.com/llvm.git", commit="abc"
         )
         config = AnalysisConfig(
             name="llvm-project",
             cmake_source_subdir="llvm",
-            build_targets=["clang"],
+            build_targets=["gen.h", "extra"],
+            file_regex="clang/.*",
         )
         configure_project(project, config, "/work/llvm-project")
 
         cmake_args = mock_cmake.call_args[0]
         self.assertTrue(cmake_args[0].endswith("/llvm"))
 
+        mock_objects.assert_called_once_with(
+            "/work/llvm-project/build", "/work/llvm-project", "clang/.*"
+        )
+        mock_prereqs.assert_called_once_with(
+            "/work/llvm-project/build", ["tools/clang/a.cpp.o"]
+        )
         build_args = mock_build.call_args[0]
-        self.assertIn("clang", build_args[1])
+        self.assertEqual(build_args[1], ["gen.h", "extra", "clang-tablegen-targets"])
+
+
+class TestConfigure(unittest.TestCase):
+    def _write_config(self, tmp_dir: str, names: list[str]) -> str:
+        config_path = os.path.join(tmp_dir, "projects.json")
+        projects = {
+            name: {"url": f"https://example.com/{name}.git", "commit": "abc"}
+            for name in names
+        }
+        with open(config_path, "w") as f:
+            json.dump({"projects": projects}, f)
+        return config_path
+
+    @patch("testers.analyze.check_clang_compiler")
+    @patch("testers.analyze.configure_project")
+    def test_configures_every_project_and_prints_its_log(
+        self, mock_configure, mock_check
+    ):
+        mock_configure.side_effect = lambda project, _config, _src, output: (
+            output.write(f"{project.name} output\n")
+        )
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            config_path = self._write_config(tmp_dir, ["a", "b"])
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                configure(work_dir="/work", config_path=config_path)
+
+        self.assertEqual(mock_configure.call_count, 2)
+        dirs = sorted(call.args[2] for call in mock_configure.call_args_list)
+        self.assertEqual(dirs, ["/work/a", "/work/b"])
+        out = stdout.getvalue()
+        for name in ("a", "b"):
+            self.assertIn(f"[{name}] Configuring...\n{name} output\n[{name}] Done", out)
+
+    @patch("testers.analyze.check_clang_compiler")
+    @patch("testers.analyze.configure_project")
+    def test_raises_after_other_projects_finish(self, mock_configure, mock_check):
+        def configure_one(project, _config, _src, output):
+            if project.name == "bad":
+                output.write("cmake error\n")
+                raise subprocess.CalledProcessError(1, ["cmake"])
+
+        mock_configure.side_effect = configure_one
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            config_path = self._write_config(tmp_dir, ["bad", "good"])
+            stdout = io.StringIO()
+            with (
+                redirect_stdout(stdout),
+                self.assertRaises(subprocess.CalledProcessError),
+            ):
+                configure(work_dir="/work", config_path=config_path)
+
+        out = stdout.getvalue()
+        self.assertIn("cmake error\n[bad] Failed", out)
+        self.assertIn("[good] Done", out)
 
 
 class TestAnalyzeProject(unittest.TestCase):
@@ -621,7 +796,8 @@ class TestGetAnalysisConfigs(unittest.TestCase):
         self.assertIn("llvm-project", configs)
         cfg = configs["llvm-project"]
         self.assertEqual(cfg.cmake_source_subdir, "llvm")
-        self.assertTrue(len(cfg.build_targets) > 0)
+        # The generated headers are built from the analyzed files' prerequisites.
+        self.assertEqual(cfg.build_targets, [])
         self.assertIsNotNone(cfg.file_regex)
 
     def test_llvm_project_skips_the_static_analyzer(self):

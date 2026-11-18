@@ -5,9 +5,13 @@ import os
 import re
 import shutil
 import subprocess
+import tempfile
+import threading
 import time
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
+from typing import IO
 
 from testers.config import CONFIG_FILE, PROJECTS_DIR, Project, load_projects
 
@@ -29,6 +33,14 @@ ANALYSIS_CONFIG_FIELDS = {
 }
 
 ANALYZER_PREFIX = "clang-analyzer-"
+
+# Number of `ninja -t query` targets per call, to keep command lines short.
+NINJA_QUERY_CHUNK = 500
+
+_print_lock = threading.Lock()
+# CMake configures projects in parallel, but each ninja build already uses
+# every core, so builds run one at a time.
+_build_lock = threading.Lock()
 
 
 @dataclass
@@ -124,7 +136,12 @@ def check_clang_compiler() -> None:
         sys.exit(1)
 
 
-def configure_cmake(source_dir: str, build_dir: str, extra_flags: list[str]) -> None:
+def configure_cmake(
+    source_dir: str,
+    build_dir: str,
+    extra_flags: list[str],
+    output: IO[str] | None = None,
+) -> None:
     """Run cmake configure with Ninja generator."""
     os.makedirs(build_dir, exist_ok=True)
 
@@ -147,14 +164,88 @@ def configure_cmake(source_dir: str, build_dir: str, extra_flags: list[str]) -> 
         ]
 
     cmd += extra_flags
-    subprocess.run(cmd, check=True)
+    subprocess.run(cmd, check=True, stdout=output, stderr=output)
 
 
-def build_project(build_dir: str, targets: list[str]) -> None:
+def build_project(
+    build_dir: str, targets: list[str], output: IO[str] | None = None
+) -> None:
     """Build specific project targets. Does nothing if targets is empty."""
     if not targets:
         return
-    subprocess.run(["ninja", "-C", build_dir] + targets, check=True)
+    subprocess.run(
+        ["ninja", "-C", build_dir] + targets, check=True, stdout=output, stderr=output
+    )
+
+
+def analyzed_files_regex(source_dir: str, file_regex: str | None) -> str | None:
+    """Return the regex run-clang-tidy matches against absolute file paths."""
+    if not file_regex:
+        return None
+    return f"^{re.escape(source_dir)}/{file_regex}"
+
+
+def analyzed_objects(
+    build_dir: str, source_dir: str, file_regex: str | None
+) -> list[str]:
+    """Return the ninja outputs compiled from the files run-clang-tidy analyzes."""
+    with open(os.path.join(build_dir, "compile_commands.json")) as f:
+        database = json.load(f)
+
+    regex = analyzed_files_regex(source_dir, file_regex)
+    file_re = re.compile(regex) if regex else None
+    objects = set()
+    for entry in database:
+        # Select files the way run-clang-tidy does.
+        path = os.path.abspath(os.path.join(entry["directory"], entry["file"]))
+        if file_re and not file_re.search(path):
+            continue
+        output = os.path.join(entry["directory"], entry["output"])
+        objects.add(os.path.relpath(output, build_dir))
+    return sorted(objects)
+
+
+def _ninja_tool(build_dir: str, *args: str) -> str:
+    return subprocess.run(
+        ["ninja", "-t", *args],
+        cwd=build_dir,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout
+
+
+def prerequisite_targets(build_dir: str, objects: list[str]) -> list[str]:
+    """Return what ninja must build before it can compile objects.
+
+    These are generated headers and sources and the targets ordered before the
+    compilation, so building them lets clang-tidy parse every analyzed file
+    without compiling or linking the project itself.
+    """
+    if not objects:
+        return []
+
+    generated = {
+        line.rsplit(": ", 1)[0]
+        for line in _ninja_tool(build_dir, "targets", "all").splitlines()
+    }
+
+    inputs: set[str] = set()
+    for i in range(0, len(objects), NINJA_QUERY_CHUNK):
+        chunk = objects[i : i + NINJA_QUERY_CHUNK]
+        section = None
+        for line in _ninja_tool(build_dir, "query", *chunk).splitlines():
+            if line.startswith("    "):
+                if section == "input":
+                    # "|", "||" and "|@" mark implicit, order-only and
+                    # validation inputs.
+                    inputs.add(re.sub(r"^\|[|@]? ", "", line.strip()))
+            elif line.startswith("  "):
+                section = line.strip().split(":", 1)[0]
+            else:
+                section = None
+    # Only generated files and phony targets need building.
+    return sorted((inputs & generated) - set(objects))
 
 
 def check_flags(check_name: str) -> list[str]:
@@ -229,8 +320,8 @@ def run_clang_tidy(
     if tidy_config:
         cmd.append(f"-config={tidy_config}")
 
-    if file_regex:
-        full_regex = f"^{re.escape(source_dir)}/{file_regex}"
+    full_regex = analyzed_files_regex(source_dir, file_regex)
+    if full_regex:
         cmd.append(full_regex)
 
     with open(log_file, "w") as log, open(progress_file, "a") as progress:
@@ -259,8 +350,9 @@ def configure_project(
     project: Project,
     config: AnalysisConfig,
     source_dir: str,
+    output: IO[str] | None = None,
 ) -> None:
-    """Configure and build a single project."""
+    """Configure a project and build what clang-tidy needs to parse its files."""
     source_dir = os.path.abspath(source_dir)
     build_dir = os.path.join(source_dir, "build")
 
@@ -268,26 +360,58 @@ def configure_project(
     if config.cmake_source_subdir:
         cmake_source = os.path.join(source_dir, config.cmake_source_subdir)
 
-    print(f"[{project.name}] Configuring...")
     remove_clang_tidy_configs(source_dir)
-    configure_cmake(cmake_source, build_dir, config.cmake_flags)
-    build_project(build_dir, config.build_targets)
-    print(f"[{project.name}] Done.")
+    configure_cmake(cmake_source, build_dir, config.cmake_flags, output)
+    objects = analyzed_objects(build_dir, source_dir, config.file_regex)
+    targets = config.build_targets + prerequisite_targets(build_dir, objects)
+    with _build_lock:
+        build_project(build_dir, list(dict.fromkeys(targets)), output)
+
+
+def _configure_logged(
+    project: Project, config: AnalysisConfig, source_dir: str
+) -> None:
+    """Configure a project, then print its whole log at once."""
+    start = time.monotonic()
+    status = "Failed"
+    # Projects are configured in parallel, so collect the output to keep their
+    # logs from interleaving.
+    with tempfile.TemporaryFile("w+") as output:
+        try:
+            configure_project(project, config, source_dir, output)
+            status = "Done"
+        finally:
+            output.seek(0)
+            elapsed = time.monotonic() - start
+            with _print_lock:
+                print(f"[{project.name}] Configuring...")
+                print(output.read(), end="")
+                print(f"[{project.name}] {status} in {elapsed:.1f}s.", flush=True)
 
 
 def configure(
     work_dir: str = PROJECTS_DIR,
     config_path: str = CONFIG_FILE,
 ) -> None:
-    """Configure all projects (cmake + build targets)."""
+    """Configure all projects and build what their analyzed files need."""
     check_clang_compiler()
     projects = load_projects(config_path)
     configs = get_analysis_configs(config_path)
 
-    for project in projects:
-        config = configs.get(project.name, AnalysisConfig(name=project.name))
-        source_dir = os.path.join(work_dir, project.name)
-        configure_project(project, config, source_dir)
+    # CMake configures a project on a single core, so configure them in parallel.
+    with ThreadPoolExecutor() as executor:
+        futures = [
+            executor.submit(
+                _configure_logged,
+                project,
+                configs.get(project.name, AnalysisConfig(name=project.name)),
+                os.path.join(work_dir, project.name),
+            )
+            for project in projects
+        ]
+    # Raise the first failure only after every project has finished.
+    for future in futures:
+        future.result()
 
 
 def analyze_project(
