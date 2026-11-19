@@ -107,7 +107,7 @@ def main() -> None:
 
     if args.output_file:
         try:
-            os.makedirs(os.path.dirname(args.output_file), exist_ok=True)
+            os.makedirs(os.path.dirname(args.output_file) or ".", exist_ok=True)
             with open(args.output_file, "w") as f:
                 f.write(body)
         except OSError as e:
