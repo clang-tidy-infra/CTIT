@@ -64,6 +64,7 @@ jobs:
         run: ./ctit.py configure
 
       - name: Run clang-tidy with all checks
+        id: analyze
         run: >
           ./ctit.py analyze
           --check-name "*,-clang-analyzer-*,-bugprone-unchecked-optional-access,-abseil-unchecked-statusor-access"
@@ -101,6 +102,43 @@ jobs:
           --run-url "$RUN_URL"
           --output check-timings-comment.md
 
+      # The nightly crash detection runs only the checks changed in the last
+      # LLVM update, so this is the only run of every check on every project.
+      # The timings and the crash report run even if the other one fails.
+      - name: Detect crashes
+        id: detect-crashes
+        if: ${{ !cancelled() && steps.analyze.outcome == 'success' }}
+        run: python3 crash_detection/detect_crashes.py --log-dir logs/ --summary-file crash-summary.md
+
+      - name: Report crashes
+        if: ${{ !cancelled() && steps.detect-crashes.outputs.crashes_found == 'true' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          python3 crash_detection/create_crash_issue.py \
+            --repo "$REPO" \
+            --run-id "$RUN_ID" \
+            --summary-file crash-summary.md \
+            --run-name "daily all-checks" \
+            --output-file crash-issue.md
+          # Comment on the open issue, if any, so a crash that is not fixed yet
+          # does not open a new issue every day.
+          TITLE="Daily all-checks crashes"
+          NUMBER=$(gh issue list --repo "$REPO" --state open --author app/github-actions \
+            --search "\"$TITLE\" in:title" --json number,title \
+            --jq "map(select(.title | startswith(\"$TITLE\"))) | .[0].number // empty")
+          if [[ -n "$NUMBER" ]]; then
+            gh issue comment "$NUMBER" --repo "$REPO" --body-file crash-issue.md
+          else
+            gh issue create --repo "$REPO" \
+              --title "$TITLE $(date -u '+%Y-%m-%d')" \
+              --body-file crash-issue.md
+          fi
+
       - name: Upload check timings
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
@@ -112,6 +150,7 @@ jobs:
             profile-report-detailed.md
             check-timings-comment.md
             ctit-timings.json
+            crash-summary.md
 
       - name: Checkout public results repository
         if: always() && hashFiles('ctit-timings.json') != '' && vars.CTIT_RESULTS_REPOSITORY != ''
