@@ -9,25 +9,23 @@
     "llvm-project": {
       "url": "https://github.com/llvm/llvm-project.git",
       "commit": "c04b00de750801238bc85f11874c66a41b61b2c5",
+      "sparse_checkout": [
+        "/llvm/",
+        "!/llvm/test/",
+        "/clang/",
+        "!/clang/test/",
+        "/cmake/",
+        "/third-party/"
+      ],
       "cmake_source_subdir": "llvm",
       "cmake_flags": [
-        "-DLLVM_ENABLE_PROJECTS=clang;clang-tools-extra",
+        "-DLLVM_ENABLE_PROJECTS=clang",
         "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON",
         "-DLLVM_ENABLE_ASSERTIONS=ON",
         "-DLLVM_TARGETS_TO_BUILD=X86",
         "-DLLVM_INCLUDE_BENCHMARKS=OFF",
         "-DLLVM_INCLUDE_EXAMPLES=OFF",
-        "-DLLVM_INCLUDE_TESTS=OFF",
-        "-DCLANG_TIDY_ENABLE_STATIC_ANALYZER=OFF"
-      ],
-      "build_targets": [
-        "clang",
-        "clangAnalysisFlowSensitiveResources",
-        "clang-nvlink-wrapper",
-        "clang-sycl-linker",
-        "clang-installapi",
-        "clang-scan-deps",
-        "clang-linker-wrapper"
+        "-DLLVM_INCLUDE_TESTS=OFF"
       ],
       "file_regex": "clang/(?!.*clang-fuzzer/).*(?<!\\.S)$",
       "static_analyzer": false

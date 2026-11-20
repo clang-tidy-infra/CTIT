@@ -2,7 +2,7 @@
 
 import json
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "projects.json")
 PROJECTS_DIR = "test_projects"
@@ -15,6 +15,8 @@ class Project:
     name: str
     url: str
     commit: str
+    # Non-cone sparse-checkout patterns; empty checks out the whole tree.
+    sparse_checkout: list[str] = field(default_factory=list)
 
     @property
     def browse_url(self) -> str:
@@ -28,6 +30,11 @@ def load_projects(config_path: str = CONFIG_FILE) -> list[Project]:
         config = json.load(f)
 
     return [
-        Project(name=name, url=proj["url"], commit=proj["commit"])
+        Project(
+            name=name,
+            url=proj["url"],
+            commit=proj["commit"],
+            sparse_checkout=proj.get("sparse_checkout", []),
+        )
         for name, proj in config["projects"].items()
     ]
